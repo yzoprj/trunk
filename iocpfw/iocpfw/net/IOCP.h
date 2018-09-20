@@ -128,6 +128,12 @@ class OperationHandler
 class IOCPManager
 {
 public:
+
+	IOCPManager()
+	{
+
+	}
+
 	static void initializeSocketLibrary();
 
 	static void deinitializeSocketLibrary();
@@ -163,12 +169,13 @@ protected:
 
 	bool bindWithIOCP(SocketContext *context);
 
+	bool handleSend(SocketContext *context);
 
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;
 
-	LPFN_GETACCEPTEXSOCKADDRS _lpfnAcceptExSockAddres;
+	LPFN_GETACCEPTEXSOCKADDRS _lpfnAcceptExSockAddress;
 
 	Event _shutdownEvent;
 
