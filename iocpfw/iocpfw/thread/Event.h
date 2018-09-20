@@ -5,18 +5,18 @@
 #include <Windows.h>
 #include "../common/Common.h"
 
-		class Event
-		{
-		public:
-			Event(bool isManual = false);
-			~Event(void);
-			void setEvent();
-			void resetEvent();
-			HANDLE getHandle() {return hEvent;}
+class Event
+{
+public:
+	Event(bool isManual = false);
+	~Event(void);
+	void setEvent();
+	void resetEvent();
+	HANDLE getHandle() {return hEvent;}
 
-		private:
-			HANDLE hEvent;
-		};
+private:
+	HANDLE hEvent;
+};
 
 
 
