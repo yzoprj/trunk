@@ -1,5 +1,5 @@
 #include "IOCP.h"
-
+#include <Windows.h>
 
 IOCPManager::IOCPManager()
 {
@@ -24,7 +24,7 @@ void IOCPManager::deinitializeSocketLibrary()
 
 bool IOCPManager::initializeIOCP()
 {
-
+	_IOCPHandle = CreateIoCompletionPort(NULL, NULL, NULL, 0);
 	return true;
 }
 
