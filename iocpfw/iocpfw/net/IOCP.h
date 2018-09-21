@@ -13,10 +13,17 @@
 using std::map;
 using std::string;
 using std::list;
+using std::make_pair;
 
-#define MAX_BUFFER_LENGTH 8192
+#ifndef MAX_BUFFER_LENGTH
+#define MAX_BUFFER_LENGTH 8096
+#endif
+
 #define LISTEN_PORT 10008
+
 #define LISTEN_IP "0.0.0.0"
+
+#define  MAX_POST_ACCEPT 10
 
 enum IOCPOperationType
 {
@@ -48,9 +55,10 @@ struct IOOverLapped
 
 	void clearBuffer()
 	{
+		ZeroMemory(&overLapped, sizeof(overLapped));
 		ZeroMemory(buffer, MAX_BUFFER_LENGTH);
 		wsaBuf.buf	= buffer;
-		wsaBuf.len	= 0;
+		wsaBuf.len	= MAX_BUFFER_LENGTH;
 		totalBytes	= 0;
 	}
 };
@@ -59,7 +67,7 @@ struct SocketContext
 {
 	IOOverLapped recvOverLapped;
 	IOOverLapped sendOverLapped;
-	int sockedIndex;
+	int index;
 	bool isAcceptable;
 	SOCKADDR sockAddr;
 	SOCKET sockId;
@@ -67,10 +75,19 @@ struct SocketContext
 
 	SocketContext()
 	{
-		sockedIndex = -1;
+		index = -1;
 		sockId = INVALID_SOCKET;
 		opSet = 0;
 		isAcceptable = false;
+	}
+
+	void clear()
+	{
+		recvOverLapped.clearBuffer();
+		sendOverLapped.clearBuffer();
+		memset(&sockAddr, 0 , sizeof(sockAddr));
+		sockId = INVALID_SOCKET;
+		opSet = 0;
 	}
 
 	void close()
@@ -104,6 +121,45 @@ public:
 		_clientMaps.clear();
 	}
 
+	SocketContext *getNewContext()
+	{
+		SocketContext *ctx = createNewContext();
+		ctx->index = _connectionList.size();
+		_connectionList.push_back(ctx);
+
+		return ctx;
+	}
+
+	static SocketContext *createNewContext()
+	{
+		return new SocketContext;
+	}
+
+	void addNewClient(string clientName, SocketContext *ctx)
+	{
+		_clientMaps.insert(make_pair(clientName, ctx));
+	}
+
+
+	void removeContext(SocketContext *ctx)
+	{
+		_connectionList.remove(ctx);
+		delete ctx;
+	}
+
+	void removeClient(string clientName)
+	{
+		map<string, SocketContext*>::iterator iter = _clientMaps.find(clientName);
+		if (iter != _clientMaps.end())
+		{
+			removeContext(iter->second);
+		}
+
+		_clientMaps.erase(clientName);
+
+		
+	}
+
 	void clearSocket(SocketContext *context)
 	{
 
@@ -129,10 +185,7 @@ class IOCPManager
 {
 public:
 
-	IOCPManager()
-	{
-
-	}
+	IOCPManager();
 
 	static void initializeSocketLibrary();
 
@@ -154,7 +207,7 @@ protected:
 
 	bool initializeListenSocket();
 
-	bool deinitialize();
+	void deinitialize();
 
 	bool postAccept(SocketContext *context);
 
@@ -171,6 +224,7 @@ protected:
 
 	bool handleSend(SocketContext *context);
 
+	void run();
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;
@@ -183,7 +237,7 @@ private:
 
 	int _threadCount;
 
-	SocketManager _sockManager;
-
-	SocketContext _listenContext;
+	SocketManager _clientManager;
+	SocketManager _acceptSocketManager;
+	SocketContext *_listenContext;
 };
