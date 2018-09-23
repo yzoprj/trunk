@@ -25,48 +25,173 @@ using std::make_pair;
 
 #define  MAX_POST_ACCEPT 10
 
+struct SocketContext;
+struct IOTask;
+
 enum IOCPOperationType
 {
 	NullOperation =0x00,
 	AcceptOperation = 0x01,
 	RecvOperation = 0x02,
 	SendOperation = 0x04,
-	ErrorOperation = 0x8
-
+	ErrorOperation = 0x8,
+	DisconnectOperation = 0x10
 };
 
 // 自定义重叠结构定义
 
-struct IOOverLapped
+struct IOContext
 {
 	OVERLAPPED overLapped;
 	IOCPOperationType opType;
+	SOCKET sockId;
+	IOTask *owner;
 	DWORD totalBytes;
 	DWORD opBytes;
+	int index;
+	bool isLast;
+	bool isSelfDestroy;
+	bool isBufferClear;
 	WSABUF wsaBuf;
-	char buffer[MAX_BUFFER_LENGTH];
+	
+	char *buffer;
 
-	IOOverLapped()
+	IOContext()
+		:opBytes(NullOperation),
+		sockId(SOCKET_ERROR),
+		owner(NULL),
+		totalBytes(0),
+		isLast(false),
+		index(-1),
+		isSelfDestroy(false),
+		isBufferClear(true),
+		buffer(NULL)
 	{
-		opBytes		= 0;
-		ZeroMemory(&overLapped, sizeof(overLapped));
+		
+		reallocBuffer();
 		clearBuffer();
+	}
+
+	~IOContext()
+	{
+		if (isBufferClear == true)
+		{
+			delete buffer;
+			buffer = NULL;
+			wsaBuf.buf = buffer;
+		}
+	}
+
+
+	bool isFinished()
+	{
+		if (opBytes == totalBytes)
+		{
+			return true;
+		}
+		return false;
+	}
+
+
+	void reallocBuffer(int size = MAX_BUFFER_LENGTH)
+	{
+		if (isBufferClear == true)
+		{
+			if (buffer != NULL)
+			{
+				delete buffer;
+
+
+			}
+			buffer = new char[size];
+			wsaBuf.buf = buffer;
+			wsaBuf.len = size;
+		}
 	}
 
 	void clearBuffer()
 	{
+
 		ZeroMemory(&overLapped, sizeof(overLapped));
-		ZeroMemory(buffer, MAX_BUFFER_LENGTH);
-		wsaBuf.buf	= buffer;
-		wsaBuf.len	= MAX_BUFFER_LENGTH;
-		totalBytes	= 0;
+		ZeroMemory(wsaBuf.buf, wsaBuf.len);
+
+		
 	}
 };
 
+
+struct IOTask
+{
+	int key;
+	list<IOContext *> ioList;
+	IOContext *createNewContext()
+	{
+		IOContext *ctx = new IOContext;
+		ctx->owner = this;
+		ctx->index = ioList.size();
+		ioList.push_back(ctx);
+		return ctx;
+	}
+
+	bool isFinished()
+	{
+		if (ioList.size() > 0)
+		{
+			if (ioList.back()->isFinished())
+			{
+				return true;
+			}else
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void clear()
+	{
+		list<IOContext *>::iterator iter = ioList.begin();
+
+		while(iter != ioList.end())
+		{
+			delete *iter;
+			iter++;
+		}
+		
+		ioList.clear();
+	}
+
+};
+
+
+class IOTaskManager
+{
+public:
+
+
+	IOTask *createNewTask()
+	{
+		MutexGuard guard(cs);
+		IOTask *task = new IOTask;
+		taskMap.insert(make_pair((int)task, task));
+
+		return task;
+	}
+
+	void removeTask(int key)
+	{
+		MutexGuard gurad(cs);
+		taskMap.erase(key);
+	}
+
+	map<int, IOTask *> taskMap;
+	CriticalSection cs;
+};
+
+
 struct SocketContext
 {
-	IOOverLapped recvOverLapped;
-	IOOverLapped sendOverLapped;
 	int index;
 	bool isAcceptable;
 	SOCKADDR sockAddr;
@@ -83,8 +208,7 @@ struct SocketContext
 
 	void clear()
 	{
-		recvOverLapped.clearBuffer();
-		sendOverLapped.clearBuffer();
+
 		memset(&sockAddr, 0 , sizeof(sockAddr));
 		sockId = INVALID_SOCKET;
 		opSet = 0;
@@ -202,7 +326,9 @@ public:
 
 	bool postRecv(SocketContext *context);
 
-protected:
+	bool postDisconnect(SocketContext *context);
+
+public:
 	bool initializeIOCP();
 
 	bool initializeListenSocket();
@@ -211,18 +337,20 @@ protected:
 
 	bool postAccept(SocketContext *context);
 
-	bool handleAccept(SocketContext *context);
+	bool handleAccept(SocketContext *context, IOContext *ioContext);
 	
 
-	bool handleFirstRecvWithData(SocketContext *context);
+	bool handleFirstRecvWithData(SocketContext *context, IOContext *ioContext);
 	
-	bool handleFirstRecvWithoutData(SocketContext *context);
+	bool handleFirstRecvWithoutData(SocketContext *context, IOContext *ioContext);
 
-	bool handleRecv(SocketContext *context);
+	bool handleRecv(SocketContext *context, IOContext *ioContext);
 
 	bool bindWithIOCP(SocketContext *context);
 
-	bool handleSend(SocketContext *context);
+	bool handleSend(SocketContext *context, IOContext *ioContext);
+
+	bool handleDisconnect(SocketContext *context, IOContext *ioContext);
 
 	void run();
 private:
@@ -231,6 +359,7 @@ private:
 
 	LPFN_GETACCEPTEXSOCKADDRS _lpfnAcceptExSockAddress;
 
+	LPFN_DISCONNECTEX _lpfnDisconnectEx;
 	Event _shutdownEvent;
 
 	HANDLE _IOCPHandle;
@@ -240,4 +369,5 @@ private:
 	SocketManager _clientManager;
 	SocketManager _acceptSocketManager;
 	SocketContext *_listenContext;
+	IOTaskManager _taskManager;
 };
