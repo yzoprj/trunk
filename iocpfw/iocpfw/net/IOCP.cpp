@@ -21,11 +21,22 @@ string getWindowsErrorMessage(DWORD errCode)
 
 }
 
-IOCPManager::IOCPManager()
+IOCPManager::IOCPManager(OperationHandler *opHandler /* = NULL */)
 {
 	_IOCPHandle = INVALID_HANDLE_VALUE;
 	_lpfnAcceptEx = NULL;
 	_lpfnAcceptExSockAddress = NULL;
+	_lpfnDisconnectEx = NULL;
+	
+	_clientManager = new SocketManager;
+	_acceptSocketManager = new SocketManager;
+	_bufferManager = new BufferManager;
+	_sendTaskManager = new IOTaskManager;
+
+	if (opHandler == NULL)
+	{
+		_opHandler = new DefaultOperationHandler();
+	}
 
 }
 
@@ -49,6 +60,12 @@ bool IOCPManager::initializeIOCP()
 {
 	_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
 	return true;
+}
+
+
+IOCPManager::~IOCPManager()
+{
+
 }
 
 
@@ -144,11 +161,11 @@ bool IOCPManager::initializeListenSocket()
 
 		for (int i = 0; i < MAX_POST_ACCEPT; i++)
 		{
-			SocketContext *ctx =  _acceptSocketManager.getNewContext();
+			SocketContext *ctx =  _acceptSocketManager->getNewContext();
 
 			if (postAccept(ctx) == false)
 			{
-				_acceptSocketManager.removeContext(ctx);
+				_acceptSocketManager->removeContext(ctx);
 				return false;
 			}
 		}
@@ -184,14 +201,25 @@ bool IOCPManager::postAccept(SocketContext *context)
 
 
 
+	//int result = _lpfnAcceptEx(_listenContext->sockId,
+	//						context->sockId,
+	//						ioContext->wsaBuf.buf,
+	//						ioContext->wsaBuf.len - ((sizeof(SOCKADDR_IN)+16)*2),
+	//						sizeof(SOCKADDR_IN) + 16,
+	//						sizeof(SOCKADDR_IN) + 16,
+	//						&dwBytes,
+	//						(OVERLAPPED *)&ioContext);
+
+
 	int result = _lpfnAcceptEx(_listenContext->sockId,
-							context->sockId,
-							ioContext->wsaBuf.buf,
-							ioContext->wsaBuf.len - ((sizeof(SOCKADDR_IN)+16)*2),
-							sizeof(SOCKADDR_IN) + 16,
-							sizeof(SOCKADDR_IN) + 16,
-							&dwBytes,
-							(OVERLAPPED *)&ioContext);
+		context->sockId,
+		ioContext->wsaBuf.buf,
+		0,
+		sizeof(SOCKADDR_IN) + 16,
+		sizeof(SOCKADDR_IN) + 16,
+		&dwBytes,
+		(OVERLAPPED *)&ioContext);
+
 	if (result == FALSE)
 	{
 		if (WSAGetLastError() != WSA_IO_PENDING)
@@ -234,7 +262,7 @@ bool IOCPManager::postSend(SocketContext *context)
 	DWORD dwBytes = 0;
 
 
-	IOTask *task = _taskManager.createNewTask();
+	IOTask *task = _sendTaskManager->createNewTask();
 	IOContext *ioContext = task->createNewContext();
 	ioContext->opType = RecvOperation;
 	ioContext->sockId = context->sockId;
@@ -271,8 +299,14 @@ bool IOCPManager::handleAccept(SocketContext *context, IOContext *ioContext)
 
 bool IOCPManager::handleRecv(SocketContext *context, IOContext *ioContext)
 {
-
-
+	// recieve 0 byte means remote host is disconnected
+	if (ioContext->overLapped.InternalHigh == 0)
+	{
+		_bufferManager->removeIoBuffer(context->sockId);
+		_acceptSocketManager->removeClient(SocketManager::getClientName(context));
+		return false;
+	}
+	_opHandler->handleRecv(context, ioContext);
 
 	delete ioContext;
 
@@ -283,11 +317,14 @@ bool IOCPManager::handleRecv(SocketContext *context, IOContext *ioContext)
 bool IOCPManager::handleSend(SocketContext *context, IOContext *ioContext)
 {
 	ioContext->opBytes += ioContext->overLapped.InternalHigh;
+
+	_opHandler->handleSend(context, ioContext);
+
 	if (ioContext->isFinished())
 	{
 		if (ioContext->owner != NULL)
 		{
-			_taskManager.removeTask(ioContext->owner->key);
+			_sendTaskManager->removeTask(ioContext->owner->key);
 		}
 	}
 
@@ -324,23 +361,31 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 	int clientLength = sizeof(SOCKADDR_IN);
 	int localLength = sizeof(SOCKADDR_IN);
 
+	//_lpfnAcceptExSockAddress(ioContext->wsaBuf.buf, 
+	//						ioContext->wsaBuf.len - ((clientLength + 16) * 2),
+	//						clientLength + 16,
+	//						clientLength + 16,
+	//						(sockaddr **)&localAddr,
+	//						&localLength,
+	//						(sockaddr **)&clientAddr,
+	//						&clientLength);
+
 	_lpfnAcceptExSockAddress(ioContext->wsaBuf.buf, 
-							ioContext->wsaBuf.len - ((clientLength + 16) * 2),
-							clientLength + 16,
-							clientLength + 16,
-							(sockaddr **)&localAddr,
-							&localLength,
-							(sockaddr **)&clientAddr,
-							&clientLength);
+		0,
+		clientLength + 16,
+		clientLength + 16,
+		(sockaddr **)&localAddr,
+		&localLength,
+		(sockaddr **)&clientAddr,
+		&clientLength);
 
-
-
-	SocketContext *newContext = _clientManager.getNewContext();
+	SocketContext *newContext = _clientManager->getNewContext();
 	newContext->isAcceptable = true;
 	newContext->sockId = context->sockId;
 	//memcpy(newContext->recvOverLapped.buffer, context->recvOverLapped.buffer, MAX_BUFFER_LENGTH);
 	memcpy(&newContext->sockAddr,&clientAddr, sizeof(SOCKADDR_IN));
 
+	_bufferManager->addNewIoBuffer(newContext);
 	
 	bindWithIOCP(newContext);
 	
@@ -349,13 +394,16 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 		return false;
 	}
 
+
+	_opHandler->handleAccept(newContext);
+
 	return true;
 
 }
 
 bool IOCPManager::handleFirstRecvWithoutData(SocketContext *context, IOContext *ioContext)
 {
-	SocketContext *newContext = _clientManager.getNewContext();
+	SocketContext *newContext = _clientManager->getNewContext();
 
 	SOCKADDR_IN clientAddr = {0};
 	int len = sizeof(SOCKADDR_IN);
@@ -367,10 +415,14 @@ bool IOCPManager::handleFirstRecvWithoutData(SocketContext *context, IOContext *
 
 	bindWithIOCP(newContext);
 
+	_bufferManager->addNewIoBuffer(newContext);
+
 	if (this->postRecv(newContext) == false)
 	{
 		return false;
 	}
+
+	_opHandler->handleAccept(newContext);
 
 	return true;
 }
@@ -393,10 +445,12 @@ bool IOCPManager::postDisconnect(SocketContext *context)
 
 bool IOCPManager::handleDisconnect(SocketContext *context, IOContext *ioContext)
 {
+
+	_opHandler->handleDisconnect(context);
 	delete ioContext;
 
 
-
+	
 
 	return postAccept(context);
 }
@@ -445,4 +499,24 @@ void IOCPManager::run()
 		}
 
 	}
+}
+
+void DefaultOperationHandler::handleRecv(SocketContext *sockContext, IOContext *ioContext)
+{
+	
+}
+
+void DefaultOperationHandler::handleSend(SocketContext *sockContext, IOContext *ioContext)
+{
+	
+}
+
+void DefaultOperationHandler::handleAccept(SocketContext *context)
+{
+	
+}
+
+void DefaultOperationHandler::handleDisconnect(SocketContext *context)
+{
+	
 }

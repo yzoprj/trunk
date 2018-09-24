@@ -1,19 +1,32 @@
 #pragma once
 #include <WinSock2.h>
+
 #include <MSWSock.h>
+#include <Ws2tcpip.h>
 #include <map>
 #include <utility>
 #include <string>
 #include <deque>
 #include <memory>
 #include <list>
+#include <vector>
 #include "../thread/SyncObjects.h"
 #include "../thread/Event.h"
 
 using std::map;
 using std::string;
 using std::list;
+using std::vector;
+using std::iterator;
 using std::make_pair;
+
+
+struct SocketContext;
+struct IOTask;
+
+typedef map<int, vector<char> *>::iterator IoBufferMapIterator;
+typedef map<string, SocketContext *>::iterator SocketContextMapIterator;
+typedef list<SocketContext *>::iterator SocketContextListIterator;
 
 #ifndef MAX_BUFFER_LENGTH
 #define MAX_BUFFER_LENGTH 8096
@@ -25,8 +38,7 @@ using std::make_pair;
 
 #define  MAX_POST_ACCEPT 10
 
-struct SocketContext;
-struct IOTask;
+
 
 enum IOCPOperationType
 {
@@ -169,24 +181,41 @@ class IOTaskManager
 {
 public:
 
+	~IOTaskManager()
+	{
+		clearAll();
+	}
 
 	IOTask *createNewTask()
 	{
-		MutexGuard guard(cs);
+		MutexGuard guard(_cs);
 		IOTask *task = new IOTask;
-		taskMap.insert(make_pair((int)task, task));
+		_taskMap.insert(make_pair((int)task, task));
 
 		return task;
 	}
 
 	void removeTask(int key)
 	{
-		MutexGuard gurad(cs);
-		taskMap.erase(key);
+		MutexGuard gurad(_cs);
+		_taskMap.erase(key);
 	}
 
-	map<int, IOTask *> taskMap;
-	CriticalSection cs;
+
+	void clearAll()
+	{
+		map<int, IOTask *>::iterator iter = _taskMap.begin();
+
+		while (iter != _taskMap.end())
+		{
+			delete iter->second;
+			iter++;
+		}
+	}
+private:
+
+	map<int, IOTask *> _taskMap;
+	CriticalSection _cs;
 };
 
 
@@ -194,7 +223,7 @@ struct SocketContext
 {
 	int index;
 	bool isAcceptable;
-	SOCKADDR sockAddr;
+	SOCKADDR_IN sockAddr;
 	SOCKET sockId;
 	DWORD opSet;
 
@@ -231,6 +260,8 @@ struct SocketContext
 };
 
 
+
+
 class SocketManager
 {
 
@@ -240,13 +271,28 @@ public:
 
 	}
 
-	void clear()
+	~SocketManager()
+	{
+		clearAll();
+	}
+
+	void clearAll()
 	{
 		_clientMaps.clear();
+
+		list<SocketContext *>::iterator iter = _connectionList.begin();
+		while (iter != _connectionList.end())
+		{
+			delete *iter;
+			iter++;
+		}
+		
+		_connectionList.clear();
 	}
 
 	SocketContext *getNewContext()
 	{
+		MutexGuard gurad(_cs);
 		SocketContext *ctx = createNewContext();
 		ctx->index = _connectionList.size();
 		_connectionList.push_back(ctx);
@@ -261,22 +307,44 @@ public:
 
 	void addNewClient(string clientName, SocketContext *ctx)
 	{
+		MutexGuard guard(_cs);
 		_clientMaps.insert(make_pair(clientName, ctx));
 	}
 
+	static string getClientName(SocketContext *ctx)
+	{
+		
+		char buffer[128] = {0};
+		char keyBuffer[128] = {0};
+		
+
+		sprintf(keyBuffer, "%s:%d",inet_ntop(AF_INET,&ctx->sockAddr.sin_addr, buffer, 128),
+											htons(ctx->sockAddr.sin_port));
+
+		return keyBuffer;
+		
+	}
+
+	void addNewClient(SocketContext *ctx)
+	{
+		 addNewClient(getClientName(ctx), ctx);
+	}
 
 	void removeContext(SocketContext *ctx)
 	{
+		MutexGuard guard(_cs);
 		_connectionList.remove(ctx);
 		delete ctx;
 	}
 
 	void removeClient(string clientName)
 	{
+		MutexGuard guard(_cs);
 		map<string, SocketContext*>::iterator iter = _clientMaps.find(clientName);
 		if (iter != _clientMaps.end())
 		{
-			removeContext(iter->second);
+			_connectionList.remove(iter->second);
+			delete iter->second;
 		}
 
 		_clientMaps.erase(clientName);
@@ -296,20 +364,87 @@ private:
 };
 
 
+class BufferManager
+{
+public:
+
+	~BufferManager()
+	{
+		clearAll();
+	}
+	void addNewIoBuffer(SocketContext *context)
+	{
+		MutexGuard guard(_cs);
+		_ioBufferMap.insert(make_pair(context->sockId, new vector<char>()));
+	}
+
+	void removeIoBuffer(int key)
+	{
+		MutexGuard guard(_cs);
+		IoBufferMapIterator iter = _ioBufferMap.find(key);
+
+		if (iter != _ioBufferMap.end())
+		{
+			delete iter->second;
+			_ioBufferMap.erase(key);
+		}
+		
+	}
+
+	void clearAll()
+	{
+		MutexGuard guard(_cs);
+		IoBufferMapIterator iter = _ioBufferMap.begin();
+
+		while (iter != _ioBufferMap.end())
+		{
+			delete iter->second;
+			iter++;
+		}
+		_ioBufferMap.clear();
+	}
+private:
+	CriticalSection _cs;
+	map<int, vector<char> *> _ioBufferMap;
+};
+
+
 class OperationHandler
 {
-	virtual void handleRecv(SocketContext *context) = 0;
+public:
+	virtual void handleRecv(SocketContext *sockContext, IOContext *ioContext) = 0;
 
-	virtual void handleSend(SocketContext *context) = 0;
+	virtual void handleSend(SocketContext *sockContext, IOContext *ioContext) = 0;
 
 	virtual void handleAccept(SocketContext *context) = 0;
+
+	virtual void handleDisconnect(SocketContext *context) = 0;
+};
+
+class DefaultOperationHandler : public OperationHandler
+{
+	
+public:
+	virtual void handleRecv(SocketContext *sockContext, IOContext *ioContext);
+
+
+	virtual void handleSend(SocketContext *sockContext, IOContext *ioContext);
+
+
+	virtual void handleAccept(SocketContext *context);
+
+
+	virtual void handleDisconnect(SocketContext *context);
+
 };
 
 class IOCPManager
 {
 public:
 
-	IOCPManager();
+	IOCPManager(OperationHandler *opHandler = NULL);
+
+	~IOCPManager();
 
 	static void initializeSocketLibrary();
 
@@ -366,8 +501,10 @@ private:
 
 	int _threadCount;
 
-	SocketManager _clientManager;
-	SocketManager _acceptSocketManager;
+	OperationHandler *_opHandler;
+	SocketManager *_clientManager;
+	SocketManager *_acceptSocketManager;
 	SocketContext *_listenContext;
-	IOTaskManager _taskManager;
+	BufferManager *_bufferManager;
+	IOTaskManager *_sendTaskManager;
 };
