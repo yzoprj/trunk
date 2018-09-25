@@ -28,9 +28,9 @@ IOCPManager::IOCPManager(OperationHandler *opHandler /* = NULL */)
 	_lpfnAcceptExSockAddress = NULL;
 	_lpfnDisconnectEx = NULL;
 	
-	_clientManager = new SocketManager;
-	_acceptSocketManager = new SocketManager;
-	_bufferManager = new BufferManager;
+	_clientManager = new SocketContextManager;
+	_acceptSocketManager = new SocketContextManager;
+	_bufferManager = new IOBufferManager;
 	_sendTaskManager = new IOTaskManager;
 
 	if (opHandler == NULL)
@@ -303,7 +303,7 @@ bool IOCPManager::handleRecv(SocketContext *context, IOContext *ioContext)
 	if (ioContext->overLapped.InternalHigh == 0)
 	{
 		_bufferManager->removeIoBuffer(context->sockId);
-		_acceptSocketManager->removeClient(SocketManager::getClientName(context));
+		_acceptSocketManager->removeClient(SocketContextManager::getClientName(context));
 		return false;
 	}
 	_opHandler->handleRecv(context, ioContext);
@@ -324,7 +324,7 @@ bool IOCPManager::handleSend(SocketContext *context, IOContext *ioContext)
 	{
 		if (ioContext->owner != NULL)
 		{
-			_sendTaskManager->removeTask(ioContext->owner->key);
+			_sendTaskManager->removeTask(((IOTask *)ioContext->owner)->key);
 		}
 	}
 
@@ -348,8 +348,36 @@ bool IOCPManager::bindWithIOCP(SocketContext *context)
 }
 
 
+void IOCPManager::shutdown()
+{
+	_shutdownEvent.setEvent();
+}
+
+void IOCPManager::postShutdown()
+{
+	PostQueuedCompletionStatus(_IOCPHandle, 0, NULL, NULL);
+}
+
+void IOCPManager::closeAll()
+{
+	_acceptSocketManager->clearAll();
+	_clientManager->clearAll();
+	_listenContext->close();
+	_bufferManager->clearAll();
+	_sendTaskManager->clearAll();
+}
+
 void IOCPManager::deinitialize()
 {
+	closeAll();
+	delete _acceptSocketManager;
+	delete _clientManager;
+	delete _listenContext;
+	delete _bufferManager;
+	delete _sendTaskManager;
+	delete _opHandler;
+
+
 
 }
 
@@ -385,7 +413,7 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 	//memcpy(newContext->recvOverLapped.buffer, context->recvOverLapped.buffer, MAX_BUFFER_LENGTH);
 	memcpy(&newContext->sockAddr,&clientAddr, sizeof(SOCKADDR_IN));
 
-	_bufferManager->addNewIoBuffer(newContext);
+	_bufferManager->addNewIoBuffer(newContext->sockId);
 	
 	bindWithIOCP(newContext);
 	
@@ -415,7 +443,7 @@ bool IOCPManager::handleFirstRecvWithoutData(SocketContext *context, IOContext *
 
 	bindWithIOCP(newContext);
 
-	_bufferManager->addNewIoBuffer(newContext);
+	_bufferManager->addNewIoBuffer(newContext->sockId);
 
 	if (this->postRecv(newContext) == false)
 	{
