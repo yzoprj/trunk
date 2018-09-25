@@ -84,12 +84,14 @@ bool IOCPManager::initializeListenSocket()
 
 	if (_listenContext->sockId == INVALID_SOCKET)
 	{
+		WRITELOG("initialize server socket error!!!!");
 		return false;
 	}
 
 	if (CreateIoCompletionPort((HANDLE)_listenContext->sockId, _IOCPHandle,(ULONG_PTR)_listenContext, 0) == NULL)
 	{
 		_listenContext->close();
+		WRITELOG("bind IOCP error!!!");
 		return false;
 	}
 
@@ -190,7 +192,9 @@ bool IOCPManager::postAccept(SocketContext *context)
 	context->sockId = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
 
-	IOContext *ioContext = new IOContext;
+
+
+	IOContext *ioContext = context->ioContext;
 	ioContext->sockId = context->sockId;
 	ioContext->opType = AcceptOperation;
 
@@ -208,21 +212,23 @@ bool IOCPManager::postAccept(SocketContext *context)
 	//						sizeof(SOCKADDR_IN) + 16,
 	//						sizeof(SOCKADDR_IN) + 16,
 	//						&dwBytes,
-	//						(OVERLAPPED *)&ioContext);
+	//						(OVERLAPPED *)ioContext);
 
 
 	int result = _lpfnAcceptEx(_listenContext->sockId,
-		context->sockId,
-		ioContext->wsaBuf.buf,
-		0,
-		sizeof(SOCKADDR_IN) + 16,
-		sizeof(SOCKADDR_IN) + 16,
-		&dwBytes,
-		(OVERLAPPED *)&ioContext);
+							context->sockId,
+							ioContext->wsaBuf.buf,
+							0,
+							sizeof(SOCKADDR_IN) + 16,
+							sizeof(SOCKADDR_IN) + 16,
+							&dwBytes,
+							(OVERLAPPED *)ioContext);
 
 	if (result == FALSE)
 	{
-		if (WSAGetLastError() != WSA_IO_PENDING)
+		int result = WSAGetLastError();
+		WRITELOG(getWindowsErrorMessage(result).c_str());
+		if (result != WSA_IO_PENDING)
 		{
 			return false;
 		}
@@ -240,7 +246,9 @@ bool IOCPManager::postRecv(SocketContext *context)
 	DWORD dwBytes = 0;
 
 
-	IOContext *ioContext = new IOContext;
+	IOContext *ioContext = context->ioContext;
+
+	ioContext->clearBuffer();
 
 	ioContext->sockId = context->sockId;
 	ioContext->opType = RecvOperation;
@@ -306,11 +314,20 @@ bool IOCPManager::handleRecv(SocketContext *context, IOContext *ioContext)
 		_acceptSocketManager->removeClient(SocketContextManager::getClientName(context));
 		return false;
 	}
+
+	vector<char > *buffer = context->recvBuff;
+
+	if (buffer->capacity() < buffer->size() + ioContext->overLapped.InternalHigh)
+	{
+		buffer->reserve(buffer->size() + ioContext->overLapped.InternalHigh + MAX_BUFFER_LENGTH / 8);
+	}
+
+	buffer->insert(buffer->begin() + buffer->size(), ioContext->wsaBuf.buf, ioContext->wsaBuf.buf + ioContext->overLapped.InternalHigh);
+	buffer->push_back(0);
 	_opHandler->handleRecv(context, ioContext);
 
-	delete ioContext;
 
-	return true;
+	return postRecv(context);
 }
 
 
@@ -324,7 +341,11 @@ bool IOCPManager::handleSend(SocketContext *context, IOContext *ioContext)
 	{
 		if (ioContext->owner != NULL)
 		{
-			_sendTaskManager->removeTask(((IOTask *)ioContext->owner)->key);
+			if (((IOTask *)ioContext->owner)->isFinished() == true)
+			{
+				_sendTaskManager->removeTask(((IOTask *)ioContext->owner)->key);
+			}
+			
 		}
 	}
 
@@ -409,7 +430,7 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 
 	SocketContext *newContext = _clientManager->getNewContext();
 	newContext->isAcceptable = true;
-	newContext->sockId = context->sockId;
+	newContext->sockId = ioContext->sockId;
 	//memcpy(newContext->recvOverLapped.buffer, context->recvOverLapped.buffer, MAX_BUFFER_LENGTH);
 	memcpy(&newContext->sockAddr,&clientAddr, sizeof(SOCKADDR_IN));
 
@@ -429,28 +450,100 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 
 }
 
+
+void IOCPManager::SendLargeData(SocketContext *context)
+{
+	IOTask *task = _sendTaskManager->createNewTask();
+	unsigned long long totalSize = 1024 * 1024 * 128;
+	char *buffer = new char[totalSize];
+
+	memset(buffer, '1', totalSize);
+
+	unsigned long long countSize = 0;
+	while (countSize < totalSize)
+	{
+		if (totalSize - countSize < context->ioContext->wsaBuf.len)
+		{
+
+		}
+
+		IOContext *ioContext = task->createNewContext();
+
+		memcpy(ioContext->buffer, buffer + countSize, ioContext->totalBytes);
+		countSize += ioContext->totalBytes;
+		ioContext->opType = SendOperation;
+		ioContext->sockId = context->sockId;
+
+		
+	}
+
+	list<IOContext *>::iterator iter = task->ioList.begin();
+	for (;iter != task->ioList.end(); iter++)
+	{
+		WSASend(context->sockId, &(*iter)->wsaBuf, 1, NULL, 0, &(*iter)->overLapped, NULL);
+		int result = WSAGetLastError();
+		WRITELOG(getWindowsErrorMessage(result).c_str());
+	}
+	
+	
+
+}
+
 bool IOCPManager::handleFirstRecvWithoutData(SocketContext *context, IOContext *ioContext)
 {
 	SocketContext *newContext = _clientManager->getNewContext();
 
-	SOCKADDR_IN clientAddr = {0};
-	int len = sizeof(SOCKADDR_IN);
+	//SOCKADDR_IN clientAddr = {0};
+	//int len = sizeof(SOCKADDR_IN);
 
-	getpeername(context->sockId, (sockaddr *)&clientAddr, &len);
+	//getpeername(context->sockId, (sockaddr *)&clientAddr, &len);
 
-	newContext->sockId = context->sockId;
-	memcpy(&context->sockAddr, &clientAddr, len);
+
+	SOCKADDR_IN *clientAddr = NULL;
+	SOCKADDR_IN *localAddr = NULL;
+
+	int clientLength = sizeof(SOCKADDR_IN);
+	int localLength = sizeof(SOCKADDR_IN);
+
+	//_lpfnAcceptExSockAddress(ioContext->wsaBuf.buf, 
+	//						ioContext->wsaBuf.len - ((clientLength + 16) * 2),
+	//						clientLength + 16,
+	//						clientLength + 16,
+	//						(sockaddr **)&localAddr,
+	//						&localLength,
+	//						(sockaddr **)&clientAddr,
+	//						&clientLength);
+
+	_lpfnAcceptExSockAddress(ioContext->wsaBuf.buf, 
+		0,
+		clientLength + 16,
+		clientLength + 16,
+		(sockaddr **)&clientAddr,
+		&localLength,
+		(sockaddr **)&localAddr,
+		&clientLength);
+
+	newContext->sockId = ioContext->sockId;
+	memcpy(&newContext->sockAddr, clientAddr, clientLength);
 
 	bindWithIOCP(newContext);
 
 	_bufferManager->addNewIoBuffer(newContext->sockId);
+
+
+	newContext->recvBuff = _bufferManager->getBufferByKey(newContext->sockId);
+
+
+	_opHandler->handleAccept(newContext);
+
+	SendLargeData(newContext);
 
 	if (this->postRecv(newContext) == false)
 	{
 		return false;
 	}
 
-	_opHandler->handleAccept(newContext);
+	
 
 	return true;
 }
@@ -531,17 +624,25 @@ void IOCPManager::run()
 
 void DefaultOperationHandler::handleRecv(SocketContext *sockContext, IOContext *ioContext)
 {
-	
+
+	WRITELOG(sockContext->recvBuff->data());
+	sockContext->recvBuff->clear();
 }
 
 void DefaultOperationHandler::handleSend(SocketContext *sockContext, IOContext *ioContext)
 {
+	char buffer[1024] = {0};
+	sprintf(buffer, "Index[%d]send bytes[%u]", ioContext->index, ioContext->overLapped.InternalHigh);
 	
+	WRITELOG(buffer);
 }
 
 void DefaultOperationHandler::handleAccept(SocketContext *context)
 {
+	char buffer[1024] = {0};
+	sprintf(buffer,"new connect:[%s]", SocketContextManager::getClientName(context).c_str());
 	
+	WRITELOG(buffer);
 }
 
 void DefaultOperationHandler::handleDisconnect(SocketContext *context)

@@ -1,6 +1,11 @@
 #include "IOTaskManager.h"
 
 
+IOTask::~IOTask()
+{
+	clear();
+}
+
 IOContext *IOTask::createNewContext()
 {
 	IOContext *ctx = new IOContext;
@@ -55,6 +60,7 @@ IOTask *IOTaskManager::createNewTask()
 {
 	MutexGuard guard(_cs);
 	IOTask *task = new IOTask;
+	task->key = (int)task;
 	_taskMap.insert(make_pair((int)task, task));
 
 	return task;
@@ -63,7 +69,16 @@ IOTask *IOTaskManager::createNewTask()
 void IOTaskManager::removeTask(int key)
 {
 	MutexGuard gurad(_cs);
-	_taskMap.erase(key);
+	map<int, IOTask*>::iterator iter = _taskMap.find(key);
+	if (iter == _taskMap.end())
+	{
+		return;
+	}else
+	{
+		delete iter->second;
+		_taskMap.erase(key);
+	}
+	
 }
 
 

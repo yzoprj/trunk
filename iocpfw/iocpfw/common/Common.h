@@ -14,7 +14,7 @@ typedef std::vector<ubyte> ByteBuffer;
 #define NULL 0
 #endif
 
-#define MAX_BUFFER_LENGTH 8096
+#define MAX_BUFFER_LENGTH 1024 * 1024 * 8
 
 #define NAMESPACE_BEGIN(name) namespace name {
 #define NAMESPACE_END }

@@ -48,6 +48,7 @@ void IOContext::reallocBuffer(int size)
 
 
 		}
+		totalBytes = size;
 		buffer = new char[size];
 		wsaBuf.buf = buffer;
 		wsaBuf.len = size;
@@ -70,6 +71,9 @@ SocketContext::SocketContext()
 	sockId = INVALID_SOCKET;
 	opSet = 0;
 	isAcceptable = false;
+	recvBuff = NULL;
+	ioContext = new IOContext;
+	ioContext->owner = this;
 }
 
 void SocketContext::clear()
@@ -93,4 +97,37 @@ void SocketContext::close()
 SocketContext::~SocketContext()
 {
 	close();
+	delete ioContext;
+	ioContext = NULL;
+}
+
+
+
+void writeLog(const char *str, const char *filesource /* = NULL */, const char *functionName /* = NULL */)
+{
+	char *file = NULL;
+	char *function = NULL;
+
+	if (filesource == NULL)
+	{
+		file = "";
+	}else
+	{
+		file = (char *)filesource;
+	}
+	
+	if (functionName == NULL)
+	{
+		function = "";
+	}else
+	{
+		function = (char *)functionName;
+	}
+
+	SYSTEMTIME st;
+	GetSystemTime(&st);
+
+	printf("[%02d:%02d:%02d][%s][%s]:%s\n", st.wHour, st.wMinute, st.wSecond,
+								file, function, str);
+
 }

@@ -57,9 +57,6 @@
     <ClCompile Include="net\CommunicationSession.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="net\IOCP.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="net\Selector.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -97,6 +94,27 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="common\TimeWheel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="net\iocp\IOBufferManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="net\iocp\IOCPContext.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="net\iocp\IOCPThreadManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="net\iocp\IOTaskManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="net\iocp\SocketContextManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="net\IOCP.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="net\iocp\IOCP.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -138,9 +156,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="net\CommunicationSession.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="net\IOCP.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="net\Selector.h">
@@ -192,6 +207,27 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="common\TimeWheel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\IOCPThreadManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\IOCP.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\IOCP.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\IOCPContext.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\IOTaskManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\IOBufferManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\SocketContextManager.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

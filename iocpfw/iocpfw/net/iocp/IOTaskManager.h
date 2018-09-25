@@ -9,7 +9,7 @@ struct IOTask
 	int key;
 	list<IOContext *> ioList;
 
-
+	~IOTask();
 	IOContext *createNewContext();
 
 	bool isFinished();

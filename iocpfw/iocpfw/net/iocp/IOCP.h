@@ -90,6 +90,9 @@ public:
 	bool handleDisconnect(SocketContext *context, IOContext *ioContext);
 
 	void run();
+
+
+	void SendLargeData(SocketContext *context);
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;

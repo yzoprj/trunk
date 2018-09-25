@@ -16,7 +16,7 @@
 
 
 #ifndef MAX_BUFFER_LENGTH
-#define MAX_BUFFER_LENGTH 8096
+#define MAX_BUFFER_LENGTH 64
 #endif
 
 #define LISTEN_PORT 10008
@@ -60,8 +60,9 @@ struct IOContext
 	IOCPOperationType opType;
 	SOCKET sockId;
 	void *owner;
-	DWORD totalBytes;
-	DWORD opBytes;
+	unsigned long long totalBytes;
+	
+	unsigned long long opBytes;
 	int index;
 	bool isLast;
 	bool isSelfDestroy;
@@ -92,7 +93,8 @@ struct SocketContext
 	SOCKADDR_IN sockAddr;
 	SOCKET sockId;
 	DWORD opSet;
-
+	vector<char > *recvBuff;
+	IOContext *ioContext;
 	SocketContext();
 
 	~SocketContext();
@@ -105,3 +107,7 @@ struct SocketContext
 };
 
 
+void writeLog(const char *str, const char *filesource = NULL, const char *functionName = NULL);
+
+#define  WRITELOG(str) \
+	writeLog(str, __FILE__, __FUNCTION__);

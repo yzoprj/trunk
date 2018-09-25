@@ -30,6 +30,7 @@ SocketContext *SocketContextManager::getNewContext()
 {
 	MutexGuard gurad(_cs);
 	SocketContext *ctx = createNewContext();
+	
 	ctx->index = _connectionList.size();
 	_connectionList.push_back(ctx);
 
