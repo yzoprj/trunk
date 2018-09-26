@@ -111,9 +111,6 @@
     <ClCompile Include="net\iocp\SocketContextManager.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="net\IOCP.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="net\iocp\IOCP.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
