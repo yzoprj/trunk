@@ -56,9 +56,11 @@ void IOCPManager::deinitializeSocketLibrary()
 }
 
 
-bool IOCPManager::initializeIOCP()
+bool IOCPManager::initializeIOCP(int threadCount)
 {
-	_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
+	_IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, threadCount);
+	
+	WRITELOG("Initialize IOCP Handle Success!");
 	return true;
 }
 
@@ -71,15 +73,13 @@ IOCPManager::~IOCPManager()
 
 bool IOCPManager::initializeListenSocket()
 {
-	// AcceptEx 和 GetAcceptExSockaddrs 的GUID，用于导出函数指针
-	GUID guidAcceptEx = WSAID_ACCEPTEX;  
-	GUID guidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS; 
-	GUID guidDisConnectEx = WSAID_DISCONNECTEX;
+
 
 	struct sockaddr_in serverAddress;
 	
 	_listenContext = new SocketContext;
 	
+
 	_listenContext->sockId = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 
 	if (_listenContext->sockId == INVALID_SOCKET)
@@ -88,6 +88,10 @@ bool IOCPManager::initializeListenSocket()
 		return false;
 	}
 
+	WRITELOG("Create New Listen Socket Success!");
+	
+	getWSAFunction();
+
 	if (CreateIoCompletionPort((HANDLE)_listenContext->sockId, _IOCPHandle,(ULONG_PTR)_listenContext, 0) == NULL)
 	{
 		_listenContext->close();
@@ -95,15 +99,22 @@ bool IOCPManager::initializeListenSocket()
 		return false;
 	}
 
+
+	WRITELOG("Bind Listen Socket To IOCP Success!");
+
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_addr.S_un.S_addr = inet_addr(LISTEN_IP);
 	serverAddress.sin_port = htons(LISTEN_PORT);
 
+
+	
 	if (bind(_listenContext->sockId, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
 	{
 		_listenContext->close();
 		return false;
 	}
+
+	WRITELOG("Listen Socket Bind Success!");
 
 	if (listen(_listenContext->sockId, SOMAXCONN) == SOCKET_ERROR)
 	{
@@ -111,71 +122,99 @@ bool IOCPManager::initializeListenSocket()
 		return false;
 	}
 
-
-	DWORD dwBytes = 0;
-
-	int result = WSAIoctl(_listenContext->sockId,
-						SIO_GET_EXTENSION_FUNCTION_POINTER,
-						&guidAcceptEx,
-						sizeof(guidAcceptEx),
-						&_lpfnAcceptEx,
-						sizeof(_lpfnAcceptEx),
-						&dwBytes,
-						NULL,
-						NULL);
-		if(result == -1)
-		{
-			this->deinitialize();
-			return false;
-		}
-
-		result = WSAIoctl(_listenContext->sockId,
-							SIO_GET_EXTENSION_FUNCTION_POINTER,
-							&guidGetAcceptExSockAddrs,
-							sizeof(guidGetAcceptExSockAddrs),
-							&_lpfnAcceptExSockAddress,
-							sizeof(_lpfnAcceptExSockAddress),
-							&dwBytes,
-							NULL,
-							NULL);
-
-		if (result == -1)
-		{
-			return false;
-		}
+	WRITELOG("Listening....................");
 
 
 
-		result = WSAIoctl(_listenContext->sockId,
-			SIO_GET_EXTENSION_FUNCTION_POINTER,
-			&guidDisConnectEx,
-			sizeof(guidDisConnectEx),
-			&_lpfnDisconnectEx,
-			sizeof(_lpfnDisconnectEx),
-			&dwBytes,
-			NULL,
-			NULL);
+	if (postAllAcceptSocket())
+	{
+		return false;
+	}
 
-		if (result == -1)
-		{
-			return false;
-		}
-
-		for (int i = 0; i < MAX_POST_ACCEPT; i++)
-		{
-			SocketContext *ctx =  _acceptSocketManager->getNewContext();
-
-			if (postAccept(ctx) == false)
-			{
-				_acceptSocketManager->removeContext(ctx);
-				return false;
-			}
-		}
+	WRITELOG("Post All Accepted Socket Success!");
 
 
 	return true;
 }
 
+bool IOCPManager::postAllAcceptSocket()
+{
+	for (int i = 0; i < MAX_POST_ACCEPT; i++)
+	{
+		SocketContext *ctx =  _acceptSocketManager->getNewContext();
+
+		if (postAccept(ctx) == false)
+		{
+			_acceptSocketManager->removeContext(ctx);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+bool IOCPManager::getWSAFunction()
+{
+	// AcceptEx 和 GetAcceptExSockaddrs 的GUID，用于导出函数指针
+	GUID guidAcceptEx = WSAID_ACCEPTEX;  
+	GUID guidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS; 
+	GUID guidDisConnectEx = WSAID_DISCONNECTEX;
+	DWORD dwBytes = 0;
+
+	int result = WSAIoctl(_listenContext->sockId,
+		SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guidAcceptEx,
+		sizeof(guidAcceptEx),
+		&_lpfnAcceptEx,
+		sizeof(_lpfnAcceptEx),
+		&dwBytes,
+		NULL,
+		NULL);
+	if(result == -1)
+	{
+		return false;
+	}
+
+	WRITELOG("Get AcceptEx Success!");
+
+	result = WSAIoctl(_listenContext->sockId,
+		SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guidGetAcceptExSockAddrs,
+		sizeof(guidGetAcceptExSockAddrs),
+		&_lpfnAcceptExSockAddress,
+		sizeof(_lpfnAcceptExSockAddress),
+		&dwBytes,
+		NULL,
+		NULL);
+
+	if (result == -1)
+	{
+		return false;
+	}
+
+
+	WRITELOG("Get GetAcceptExSocketAddress Success!");
+
+	result = WSAIoctl(_listenContext->sockId,
+		SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guidDisConnectEx,
+		sizeof(guidDisConnectEx),
+		&_lpfnDisconnectEx,
+		sizeof(_lpfnDisconnectEx),
+		&dwBytes,
+		NULL,
+		NULL);
+
+	if (result == -1)
+	{
+		return false;
+	}
+
+	WRITELOG("Get DisconnectEx Success!");
+
+	return true;
+}
 
 bool IOCPManager::postAccept(SocketContext *context)
 {
@@ -227,14 +266,13 @@ bool IOCPManager::postAccept(SocketContext *context)
 	if (result == FALSE)
 	{
 		int result = WSAGetLastError();
-		WRITELOG(getWindowsErrorMessage(result).c_str());
+		
 		if (result != WSA_IO_PENDING)
 		{
+			WRITELOG(getWindowsErrorMessage(result).c_str());
 			return false;
 		}
 	}
-
-
 
 	return true;
 }
@@ -311,7 +349,11 @@ bool IOCPManager::handleRecv(SocketContext *context, IOContext *ioContext)
 	if (ioContext->overLapped.InternalHigh == 0)
 	{
 		_bufferManager->removeIoBuffer(context->sockId);
-		_acceptSocketManager->removeClient(SocketContextManager::getClientName(context));
+		_clientManager->removeClient(SocketContextManager::getClientName(context));
+		
+		string str = SocketContextManager::getClientName(context) + " is disconnected!";
+		WRITELOG(str.c_str());
+		
 		return false;
 	}
 
@@ -337,7 +379,7 @@ bool IOCPManager::handleSend(SocketContext *context, IOContext *ioContext)
 
 	_opHandler->handleSend(context, ioContext);
 
-	if (ioContext->isFinished())
+	if (ioContext->isLast == true)
 	{
 		if (ioContext->owner != NULL)
 		{
@@ -436,8 +478,11 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 
 	_bufferManager->addNewIoBuffer(newContext->sockId);
 	
+
+
 	bindWithIOCP(newContext);
-	
+
+
 	if (this->postRecv(newContext) == false)
 	{
 		return false;
@@ -454,7 +499,7 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 void IOCPManager::SendLargeData(SocketContext *context)
 {
 	IOTask *task = _sendTaskManager->createNewTask();
-	unsigned long long totalSize = 1024 * 1024 * 128;
+	unsigned long long totalSize = 1024 * 1024;
 	char *buffer = new char[totalSize];
 
 	memset(buffer, '1', totalSize);
@@ -469,12 +514,17 @@ void IOCPManager::SendLargeData(SocketContext *context)
 
 		IOContext *ioContext = task->createNewContext();
 
-		memcpy(ioContext->buffer, buffer + countSize, ioContext->totalBytes);
-		countSize += ioContext->totalBytes;
+		memcpy(ioContext->buffer, buffer + countSize, ioContext->capacity);
+		countSize += ioContext->capacity;
 		ioContext->opType = SendOperation;
 		ioContext->sockId = context->sockId;
 
 		
+	}
+
+	if (task->ioList.cbegin() != task->ioList.end())
+	{
+		task->ioList.back()->isLast = true;
 	}
 
 	list<IOContext *>::iterator iter = task->ioList.begin();
@@ -518,9 +568,9 @@ bool IOCPManager::handleFirstRecvWithoutData(SocketContext *context, IOContext *
 		0,
 		clientLength + 16,
 		clientLength + 16,
-		(sockaddr **)&clientAddr,
-		&localLength,
 		(sockaddr **)&localAddr,
+		&localLength,
+		(sockaddr **)&clientAddr,
 		&clientLength);
 
 	newContext->sockId = ioContext->sockId;
@@ -533,6 +583,8 @@ bool IOCPManager::handleFirstRecvWithoutData(SocketContext *context, IOContext *
 
 	newContext->recvBuff = _bufferManager->getBufferByKey(newContext->sockId);
 
+
+	_clientManager->addNewClient(SocketContextManager::getClientName(context), context);
 
 	_opHandler->handleAccept(newContext);
 
@@ -624,8 +676,11 @@ void IOCPManager::run()
 
 void DefaultOperationHandler::handleRecv(SocketContext *sockContext, IOContext *ioContext)
 {
+	char buffer[8096] = {0};
+	sprintf(buffer, "Index[%d]recv bytes[%u][%s]", ioContext->index, ioContext->overLapped.InternalHigh
+							,sockContext->recvBuff->data());
 
-	WRITELOG(sockContext->recvBuff->data());
+	WRITELOG(buffer);
 	sockContext->recvBuff->clear();
 }
 

@@ -1,36 +1,40 @@
 #include "IOCPContext.h"
 
 
-IOContext::IOContext()
+IOContext::IOContext(bool isClear /* = true */)
 	:opBytes(NullOperation),
 	sockId(SOCKET_ERROR),
 	owner(NULL),
-	totalBytes(0),
+	capacity(0),
 	isLast(false),
 	index(-1),
 	isSelfDestroy(false),
-	isBufferClear(true),
 	buffer(NULL)
 {
-
+	if (isClear == false)
+	{
+		capacity = 0;
+	}else
+	{
+		capacity = MAX_BUFFER_LENGTH;
+	}
 	reallocBuffer();
 	clearBuffer();
 }
 
 IOContext::~IOContext()
 {
-	if (isBufferClear == true)
+	if (capacity > 0)
 	{
 		delete buffer;
 		buffer = NULL;
-		wsaBuf.buf = buffer;
 	}
 }
 
 
 bool IOContext::isFinished()
 {
-	if (opBytes == totalBytes)
+	if (opBytes == wsaBuf.len)
 	{
 		return true;
 	}
@@ -40,18 +44,43 @@ bool IOContext::isFinished()
 
 void IOContext::reallocBuffer(int size)
 {
-	if (isBufferClear == true)
+	if (capacity > 0)
 	{
-		if (buffer != NULL)
+		if (size <= 0)
 		{
-			delete buffer;
-
-
+			capacity = MAX_BUFFER_LENGTH;
+		}else
+		{
+			capacity = size;
 		}
-		totalBytes = size;
-		buffer = new char[size];
+
+		delete buffer;
+
+		buffer = new char[capacity];
 		wsaBuf.buf = buffer;
-		wsaBuf.len = size;
+		wsaBuf.len = capacity;
+	}
+}
+
+void IOContext::setBuffer(char *buffer, unsigned long long bufferLength, bool isClear)
+{
+	if (capacity > 0)
+	{
+		delete this->buffer;
+	}
+
+	if (isClear == false)
+	{
+		delete buffer;
+		capacity = 0;
+		opBytes = 0;
+		this->buffer = buffer;
+		wsaBuf.buf = buffer;
+		wsaBuf.len = bufferLength;
+	}else
+	{
+		capacity = bufferLength;
+		this->buffer = buffer;
 	}
 }
 
@@ -59,7 +88,12 @@ void IOContext::clearBuffer()
 {
 
 	ZeroMemory(&overLapped, sizeof(overLapped));
-	ZeroMemory(wsaBuf.buf, wsaBuf.len);
+
+	if (capacity > 0)
+	{
+		ZeroMemory(buffer, capacity);
+	}
+	
 
 
 }
@@ -81,6 +115,7 @@ void SocketContext::clear()
 
 	memset(&sockAddr, 0 , sizeof(sockAddr));
 	sockId = INVALID_SOCKET;
+	ioContext->clearBuffer();
 	opSet = 0;
 }
 
@@ -127,7 +162,7 @@ void writeLog(const char *str, const char *filesource /* = NULL */, const char *
 	SYSTEMTIME st;
 	GetSystemTime(&st);
 
-	printf("[%02d:%02d:%02d][%s][%s]:%s\n", st.wHour, st.wMinute, st.wSecond,
-								file, function, str);
+	printf("Thread[%04X]=[%02d:%02d:%02d %03d][%-40s]:%s\n", GetCurrentThreadId(), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+								function, str);
 
 }

@@ -33,15 +33,20 @@ bool IOCPThreadManager::init()
 	_threads = new IOCPThread* [_threadCount];
 	
 	_handles = new void *[_threadCount];
-
+	
+	char buffer[128] = {0};
 	for (int i = 0; i < _threadCount; i++)
 	{
 		_threads[i] = new IOCPThread(&_manager);
 		_handles[i] = _threads[i]->getThreadHandle();
+		sprintf(buffer, "IOCPThread[%d]", i);
+		_threads[i]->setNameInternal(buffer);
+	
 	}
 
+
 	_manager.initializeSocketLibrary();
-	_manager.initializeIOCP();
+	_manager.initializeIOCP(_threadCount);
 	_manager.initializeListenSocket();
 
 	return true;

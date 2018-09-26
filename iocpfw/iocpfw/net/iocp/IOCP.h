@@ -66,7 +66,7 @@ public:
 
 	void closeAll();
 
-	bool initializeIOCP();
+	bool initializeIOCP(int threadCount = 4);
 
 	bool initializeListenSocket();
 
@@ -91,8 +91,16 @@ public:
 
 	void run();
 
+private:
+
+	bool getWSAFunction();
+
+
+	bool postAllAcceptSocket();
 
 	void SendLargeData(SocketContext *context);
+
+
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;

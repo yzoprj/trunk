@@ -60,18 +60,16 @@ struct IOContext
 	IOCPOperationType opType;
 	SOCKET sockId;
 	void *owner;
-	unsigned long long totalBytes;
-	
+	unsigned long long capacity;
 	unsigned long long opBytes;
 	int index;
 	bool isLast;
 	bool isSelfDestroy;
-	bool isBufferClear;
 	WSABUF wsaBuf;
 
 	char *buffer;
 
-	IOContext();
+	IOContext(bool isClear = true);
 
 	~IOContext();
 
@@ -80,6 +78,8 @@ struct IOContext
 	void reallocBuffer(int size = MAX_BUFFER_LENGTH);
 
 	void clearBuffer();
+
+	void setBuffer(char *buffer, unsigned long long bufferLength, bool isClear);
 	
 };
 

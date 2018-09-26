@@ -32,16 +32,19 @@ bool IOTask::isFinished()
 {
 	if (ioList.size() > 0)
 	{
-		if (ioList.back()->isFinished())
+		if (ioList.back()->isLast == true && ioList.back()->isFinished())
 		{
 			return true;
 		}else
 		{
 			return false;
 		}
+	}else
+	{
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 
