@@ -1,6 +1,13 @@
 #include "IOTaskManager.h"
 
 
+IOTask::IOTask()
+{
+	totalBytes = 0;
+	opBytes = 0;
+
+}
+
 IOTask::~IOTask()
 {
 	clear();
@@ -14,6 +21,12 @@ IOContext *IOTask::createNewContext()
 	ioList.push_back(ctx);
 	return ctx;
 }
+
+void IOTask::increment(long long bytes)
+{
+	InterlockedExchangeAdd64(&opBytes, bytes);
+}
+
 
 void IOTask::clear()
 {
@@ -30,22 +43,25 @@ void IOTask::clear()
 
 bool IOTask::isFinished()
 {
-	if (ioList.size() > 0)
-	{
-		if (ioList.back()->isLast == true && ioList.back()->isFinished())
-		{
-			return true;
-		}else
-		{
-			return false;
-		}
-	}else
+	//if (ioList.size() > 0)
+	//{
+	//	if (ioList.back()->isFinished())
+	//	{
+	//		return true;
+	//	}else
+	//	{
+	//		return false;
+	//	}
+	//}
+
+	if (totalBytes == opBytes)
 	{
 		return true;
 	}
 
 	return false;
 }
+
 
 
 

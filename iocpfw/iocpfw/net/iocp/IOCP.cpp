@@ -377,19 +377,32 @@ bool IOCPManager::handleSend(SocketContext *context, IOContext *ioContext)
 {
 	ioContext->opBytes += ioContext->overLapped.InternalHigh;
 
+
+
 	_opHandler->handleSend(context, ioContext);
 
-	if (ioContext->isLast == true)
+	if (ioContext->owner != NULL)
 	{
-		if (ioContext->owner != NULL)
+		IOTask *task = (IOTask *)ioContext->owner;
+		task->increment(ioContext->overLapped.InternalHigh);
+		if (task->isFinished())
 		{
-			if (((IOTask *)ioContext->owner)->isFinished() == true)
-			{
-				_sendTaskManager->removeTask(((IOTask *)ioContext->owner)->key);
-			}
-			
+			_sendTaskManager->removeTask(task->key);
 		}
 	}
+
+
+	//if (ioContext->isLast == true)
+	//{
+	//	if (ioContext->owner != NULL)
+	//	{
+	//		if (((IOTask *)ioContext->owner)->isFinished() == true)
+	//		{
+	//			_sendTaskManager->removeTask(((IOTask *)ioContext->owner)->key);
+	//		}
+	//		
+	//	}
+	//}
 
 	return true;
 }
@@ -499,9 +512,9 @@ bool IOCPManager::handleFirstRecvWithData(SocketContext *context, IOContext *ioC
 void IOCPManager::SendLargeData(SocketContext *context)
 {
 	IOTask *task = _sendTaskManager->createNewTask();
-	unsigned long long totalSize = 1024 * 1024;
+	unsigned long long totalSize = 1024 * 1024 * 512;
 	char *buffer = new char[totalSize];
-
+	task->totalBytes = totalSize;
 	memset(buffer, '1', totalSize);
 
 	unsigned long long countSize = 0;
@@ -521,6 +534,8 @@ void IOCPManager::SendLargeData(SocketContext *context)
 
 		
 	}
+
+	delete buffer;
 
 	if (task->ioList.cbegin() != task->ioList.end())
 	{
@@ -584,11 +599,11 @@ bool IOCPManager::handleFirstRecvWithoutData(SocketContext *context, IOContext *
 	newContext->recvBuff = _bufferManager->getBufferByKey(newContext->sockId);
 
 
-	_clientManager->addNewClient(SocketContextManager::getClientName(context), context);
+	_clientManager->addNewClient(SocketContextManager::getClientName(newContext), newContext);
 
 	_opHandler->handleAccept(newContext);
 
-	SendLargeData(newContext);
+//	SendLargeData(newContext);
 
 	if (this->postRecv(newContext) == false)
 	{

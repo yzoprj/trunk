@@ -7,12 +7,20 @@
 struct IOTask
 {
 	int key;
+
+	long long totalBytes;
+	long long opBytes;
 	list<IOContext *> ioList;
 
+	IOTask();
+
 	~IOTask();
+
 	IOContext *createNewContext();
 
 	bool isFinished();
+
+	void increment(long long bytes);
 
 	void clear();
 
