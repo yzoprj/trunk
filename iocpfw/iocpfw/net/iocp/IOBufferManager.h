@@ -1,23 +1,35 @@
 #pragma once
 
 #include "IOCPContext.h"
+
+struct IOBuffer
+{
+	IOContext ioContext;
+	vector<char> cache;
+	int key;
+};
+
 class IOBufferManager
 {
 public:
 	IOBufferManager(void);
 	~IOBufferManager(void);
 
-	void addNewIoBuffer(int key);
+	IOBuffer * addNewIoBuffer(int key);
 
+	IOBuffer * addNewIoBuffer(IOBuffer *ioBuffer);
 	void removeIoBuffer(int key);
 
+	static IOBuffer *getNewBuffer();
 
-	vector<char> *getBufferByKey(int key);
+	
+
+	IOBuffer *getBufferByKey(int key);
 
 	void clearAll();
 
 private:
 	CriticalSection _cs;
-	map<int, vector<char> *> _ioBufferMap;
+	map<int, IOBuffer *> _ioBufferMap;
 };
 

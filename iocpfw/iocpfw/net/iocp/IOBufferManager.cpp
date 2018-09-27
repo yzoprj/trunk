@@ -11,10 +11,20 @@ IOBufferManager::~IOBufferManager(void)
 	clearAll();
 }
 
-void IOBufferManager::addNewIoBuffer(int key)
+IOBuffer * IOBufferManager::addNewIoBuffer(int key)
 {
 	MutexGuard guard(_cs);
-	_ioBufferMap.insert(make_pair(key, new vector<char>()));
+	IOBuffer *ioBuffer = new IOBuffer;
+	ioBuffer->key = key;
+	_ioBufferMap.insert(make_pair(key, ioBuffer));
+	return ioBuffer;
+}
+
+
+IOBuffer * IOBufferManager::addNewIoBuffer(IOBuffer *ioBuffer)
+{
+	_ioBufferMap.insert(make_pair(ioBuffer->key, ioBuffer));
+	return ioBuffer;
 }
 
 void IOBufferManager::removeIoBuffer(int key)
@@ -31,7 +41,14 @@ void IOBufferManager::removeIoBuffer(int key)
 }
 
 
-vector<char > *IOBufferManager::getBufferByKey(int key)
+IOBuffer * IOBufferManager::getNewBuffer()
+{
+	IOBuffer *ioBuffer = new IOBuffer;
+	ioBuffer->key = (int)ioBuffer;
+	return ioBuffer;
+}
+
+IOBuffer *IOBufferManager::getBufferByKey(int key)
 {
 	IoBufferMapIterator iter = _ioBufferMap.find(key);
 

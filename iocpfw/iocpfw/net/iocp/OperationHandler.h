@@ -6,7 +6,7 @@
 class OperationHandler
 {
 public:
-	virtual void handleRecv(SSocketContextPtr &sockContext, IOContext *ioContext) = 0;
+	virtual void handleRecv(SSocketContextPtr &sockContext, IOBuffer *ioBuffer) = 0;
 
 	virtual void handleSend(SSocketContextPtr &sockContext, IOContext *ioContext) = 0;
 
@@ -19,7 +19,7 @@ class DefaultOperationHandler : public OperationHandler
 {
 
 public:
-	 void handleRecv(SSocketContextPtr &sockContext, IOContext *ioContext);
+	 void handleRecv(SSocketContextPtr &sockContext, IOBuffer *ioBuffer);
 
 
 	void handleSend(SSocketContextPtr &sockContext, IOContext *ioContext);

@@ -56,11 +56,11 @@ protected:
 
 	bool postSend(SSocketContextPtr &context);
 
-	bool postRecv(SSocketContextPtr &context);
+	bool postRecv(IOBuffer *buffer);
 
 	bool postDisconnect(SSocketContextPtr &context);
 
-	bool postAccept(SSocketContextPtr &context);
+	bool postAccept(IOBuffer *context);
 
 	bool handleAccept(SSocketContextPtr &context, IOContext *ioContext);
 
@@ -91,7 +91,7 @@ private:
 
 	OperationHandler *_opHandler;
 	SocketContextManager *_clientManager;
-	SocketContextManager *_acceptSocketManager;
+	IOBufferManager *_acceptContextManger;
 	SSocketContextPtr _listenContext;
 	IOBufferManager *_bufferManager;
 	IOTaskManager *_sendTaskManager;

@@ -38,8 +38,8 @@ using std::shared_ptr;
 using std::weak_ptr;
 
 struct SocketContext;
-
-typedef map<int, vector<char> *>::iterator IoBufferMapIterator;
+struct IOBuffer;
+typedef map<int, IOBuffer *>::iterator IoBufferMapIterator;
 typedef map<std::string, SocketContext *>::iterator SocketContextMapIterator;
 typedef list<SocketContext *>::iterator SocketContextListIterator;
 

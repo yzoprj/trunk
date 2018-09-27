@@ -1,14 +1,15 @@
 #include "OperationHandler.h"
 #include "SocketContextManager.h"
+#include "IOBufferManager.h"
 
-void DefaultOperationHandler::handleRecv(SSocketContextPtr &sockContext, IOContext *ioContext)
+void DefaultOperationHandler::handleRecv(SSocketContextPtr &sockContext, IOBuffer *ioBuffer)
 {
 	char buffer[8096] = {0};
-	sprintf(buffer, "Index[%d]recv bytes[%u][%s]", ioContext->index, ioContext->overLapped.InternalHigh
-		,sockContext->recvBuff->data());
+	sprintf(buffer, "Index[%d]recv bytes[%u][%s]", ioBuffer->ioContext.index, ioBuffer->ioContext.overLapped.InternalHigh
+		,ioBuffer->cache.data());
 
 	WRITELOG(buffer);
-	sockContext->recvBuff->clear();
+	ioBuffer->cache.clear();
 }
 
 void DefaultOperationHandler::handleSend(SSocketContextPtr &sockContext, IOContext *ioContext)

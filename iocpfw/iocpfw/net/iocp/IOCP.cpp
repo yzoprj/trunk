@@ -29,7 +29,7 @@ IOCPManager::IOCPManager(OperationHandler *opHandler /* = NULL */)
 	_lpfnDisconnectEx = NULL;
 	
 	_clientManager = new SocketContextManager;
-	_acceptSocketManager = new SocketContextManager;
+	_acceptContextManger = new IOBufferManager;
 	_bufferManager = new IOBufferManager;
 	_sendTaskManager = new IOTaskManager;
 
@@ -141,11 +141,11 @@ bool IOCPManager::postAllAcceptSocket()
 {
 	for (int i = 0; i < MAX_POST_ACCEPT; i++)
 	{
-		SSocketContextPtr ctx =  _acceptSocketManager->getNewContext();
+	
 
-		if (postAccept(ctx) == false)
+		if (postAccept(NULL) == false)
 		{
-			_acceptSocketManager->removeContext(ctx);
+			
 			return false;
 		}
 	}
@@ -216,7 +216,7 @@ bool IOCPManager::getWSAFunction()
 	return true;
 }
 
-bool IOCPManager::postAccept(SSocketContextPtr &context)
+bool IOCPManager::postAccept(IOBuffer *context)
 {
 	if (_listenContext->sockId == INVALID_SOCKET)
 	{
@@ -226,21 +226,24 @@ bool IOCPManager::postAccept(SSocketContextPtr &context)
 
 	DWORD dwBytes = 0;
 
-	
 
-	context->sockId = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+	SOCKET sockId = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
-
-	
-
-	IOContext *ioContext = context->ioContext;
-	ioContext->sockId = context->sockId;
-	ioContext->opType = AcceptOperation;
-
-	if (context->sockId == INVALID_SOCKET)
+	if (sockId == INVALID_SOCKET)
 	{
 		return false;
 	}
+	
+
+	if (context == NULL)
+	{
+		context = _acceptContextManger->addNewIoBuffer(IOBufferManager::getNewBuffer());
+	}
+
+	context->ioContext.sockId = sockId;
+	context->ioContext.opType = AcceptOperation;
+
+
 
 
 
@@ -255,13 +258,13 @@ bool IOCPManager::postAccept(SSocketContextPtr &context)
 
 
 	int result = _lpfnAcceptEx(_listenContext->sockId,
-							context->sockId,
-							ioContext->wsaBuf.buf,
+							sockId,
+							context->ioContext.wsaBuf.buf,
 							0,
 							sizeof(SOCKADDR_IN) + 16,
 							sizeof(SOCKADDR_IN) + 16,
 							&dwBytes,
-							(OVERLAPPED *)ioContext);
+							(OVERLAPPED *)&context->ioContext.overLapped);
 
 	if (result == FALSE)
 	{
@@ -278,20 +281,20 @@ bool IOCPManager::postAccept(SSocketContextPtr &context)
 }
 
 
-bool IOCPManager::postRecv(SSocketContextPtr &context)
+bool IOCPManager::postRecv(IOBuffer *buffer)
 {
 	DWORD dwFlgas = 0;
 	DWORD dwBytes = 0;
 
 
-	IOContext *ioContext = context->ioContext;
+	
 
-	ioContext->clearBuffer();
+	buffer->ioContext.clearBuffer();
+	buffer->cache.clear();
 
-	ioContext->sockId = context->sockId;
-	ioContext->opType = RecvOperation;
+	buffer->ioContext.opType = RecvOperation;
 
-	int result = WSARecv(context->sockId, &ioContext->wsaBuf, 1, &dwBytes, &dwFlgas, &ioContext->overLapped, NULL);
+	int result = WSARecv(buffer->ioContext.sockId, &buffer->ioContext.wsaBuf, 1, &dwBytes, &dwFlgas, &buffer->ioContext.overLapped, NULL);
 
 	if ((result == SOCKET_ERROR) && (GetLastError() != WSA_IO_PENDING) )
 	{
@@ -336,10 +339,12 @@ bool IOCPManager::handleAccept(SSocketContextPtr &context, IOContext *ioContext)
 		handleFirstRecvWithoutData(context, ioContext);
 	}
 
-	context->clear();
+	ioContext->clearBuffer();
+	ioContext->sockId = INVALID_SOCKET;
 
+	IOBuffer *ioBuffer = CONTAINING_RECORD(ioContext, IOBuffer, ioContext);
 
-	return postRecv(context);
+	return postRecv(ioBuffer);
 }
 
 
@@ -351,28 +356,30 @@ bool IOCPManager::handleRecv(SSocketContextPtr &context, IOContext *ioContext)
 	// recieve 0 byte means remote host is disconnected
 	if (ioContext->overLapped.InternalHigh == 0)
 	{
-		_bufferManager->removeIoBuffer(context->sockId);
+		_bufferManager->removeIoBuffer((int)context.get());
+		string str = SocketContextManager::getClientName(context) + " is disconnected!";
 		_clientManager->removeClient(SocketContextManager::getClientName(context));
 		
-		string str = SocketContextManager::getClientName(context) + " is disconnected!";
+		
 		WRITELOG(str.c_str());
 		
 		return false;
 	}
 
-	vector<char > *buffer = context->recvBuff;
-
-	if (buffer->capacity() < buffer->size() + ioContext->overLapped.InternalHigh)
+	IOBuffer *ioBuffer = CONTAINING_RECORD(ioContext, IOBuffer, ioContext);
+	vector<char> &buffer = ioBuffer->cache;
+	if (buffer.capacity() < buffer.size() + ioContext->overLapped.InternalHigh)
 	{
-		buffer->reserve(buffer->size() + ioContext->overLapped.InternalHigh + MAX_BUFFER_LENGTH / 8);
+		buffer.reserve(ioBuffer->cache.size() + ioContext->overLapped.InternalHigh + MAX_BUFFER_LENGTH / 8);
 	}
 
-	buffer->insert(buffer->begin() + buffer->size(), ioContext->wsaBuf.buf, ioContext->wsaBuf.buf + ioContext->overLapped.InternalHigh);
-	buffer->push_back(0);
-	_opHandler->handleRecv(context, ioContext);
+	buffer.insert(buffer.begin() + buffer.size(), ioContext->wsaBuf.buf, ioContext->wsaBuf.buf + ioContext->overLapped.InternalHigh);
+	buffer.push_back(0);
+	_opHandler->handleRecv(context, ioBuffer);
 
+	ioContext->clearBuffer();
 
-	return postRecv(context);
+	return postRecv(ioBuffer);
 }
 
 
@@ -440,7 +447,7 @@ void IOCPManager::postShutdown()
 
 void IOCPManager::closeAll()
 {
-	_acceptSocketManager->clearAll();
+	_acceptContextManger->clearAll();
 	_clientManager->clearAll();
 	_listenContext->close();
 	_bufferManager->clearAll();
@@ -450,7 +457,7 @@ void IOCPManager::closeAll()
 void IOCPManager::deinitialize()
 {
 	closeAll();
-	delete _acceptSocketManager;
+	delete _acceptContextManger;
 	delete _clientManager;
 	delete _bufferManager;
 	delete _sendTaskManager;
@@ -492,14 +499,14 @@ bool IOCPManager::handleFirstRecvWithData(SSocketContextPtr &context, IOContext 
 	//memcpy(newContext->recvOverLapped.buffer, context->recvOverLapped.buffer, MAX_BUFFER_LENGTH);
 	memcpy(&newContext->sockAddr,&clientAddr, sizeof(SOCKADDR_IN));
 
-	_bufferManager->addNewIoBuffer(newContext->sockId);
+	IOBuffer *ioBuffer = _bufferManager->addNewIoBuffer(IOBufferManager::getNewBuffer());
 	
 
 
 	bindWithIOCP(newContext);
 
-
-	if (this->postRecv(newContext) == false)
+	ioBuffer->ioContext.sockId = newContext->sockId;
+	if (this->postRecv(ioBuffer) == false)
 	{
 		return false;
 	}
@@ -596,11 +603,9 @@ bool IOCPManager::handleFirstRecvWithoutData(SSocketContextPtr &context, IOConte
 
 	bindWithIOCP(newContext);
 
-	_bufferManager->addNewIoBuffer(newContext->sockId);
+	IOBuffer *ioBuffer = _bufferManager->addNewIoBuffer((int)newContext.get());
 
-
-	newContext->recvBuff = _bufferManager->getBufferByKey(newContext->sockId);
-
+	ioBuffer->ioContext.sockId = newContext->sockId;
 
 	_clientManager->addNewClient(SocketContextManager::getClientName(newContext), newContext);
 
@@ -608,7 +613,7 @@ bool IOCPManager::handleFirstRecvWithoutData(SSocketContextPtr &context, IOConte
 
 //	SendLargeData(newContext);
 
-	if (this->postRecv(newContext) == false)
+	if (this->postRecv(ioBuffer) == false)
 	{
 		return false;
 	}
@@ -641,7 +646,7 @@ bool IOCPManager::handleDisconnect(SSocketContextPtr &context, IOContext *ioCont
 	delete ioContext;
 
 
-	return postAccept(context);
+	return true;
 }
 
 void IOCPManager::run()
@@ -667,15 +672,23 @@ void IOCPManager::run()
 			continue;
 		}else
 		{
-
-			SSocketContextPtr contextPtr = _clientManager->getContext(context);
-
-			// client isn't existed, may be disconnected
-			if (contextPtr.get() == NULL)
+			SSocketContextPtr contextPtr;
+			if (context != _listenContext.get())
 			{
-				handleError(context);
-				continue;
+				contextPtr = _clientManager->getContext(context);
+
+				// client isn't existed, may be disconnected
+				if (contextPtr.get() == NULL)
+				{
+					handleError(context);
+					continue;
+				}
+			}else
+			{
+				contextPtr = _listenContext;
 			}
+
+
 
 			IOContext *ioContext = CONTAINING_RECORD(ol, IOContext, overLapped);
 
