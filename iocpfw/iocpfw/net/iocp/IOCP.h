@@ -6,38 +6,14 @@
 #include "IOBufferManager.h"
 
 
-class OperationHandler
-{
-public:
-	virtual void handleRecv(SocketContext *sockContext, IOContext *ioContext) = 0;
+class OperationHandler;
 
-	virtual void handleSend(SocketContext *sockContext, IOContext *ioContext) = 0;
-
-	virtual void handleAccept(SocketContext *context) = 0;
-
-	virtual void handleDisconnect(SocketContext *context) = 0;
-};
-
-class DefaultOperationHandler : public OperationHandler
-{
-	
-public:
-	virtual void handleRecv(SocketContext *sockContext, IOContext *ioContext);
-
-
-	virtual void handleSend(SocketContext *sockContext, IOContext *ioContext);
-
-
-	virtual void handleAccept(SocketContext *context);
-
-
-	virtual void handleDisconnect(SocketContext *context);
-
-};
 
 class IOCPManager
 {
 public:
+
+	friend class IOCPThreadManager;
 
 	IOCPManager(OperationHandler *opHandler = NULL);
 
@@ -51,15 +27,6 @@ public:
 
 	void stop();
 
-	string getHostIP();
-
-
-	bool postSend(SocketContext *context);
-
-	bool postRecv(SocketContext *context);
-
-	bool postDisconnect(SocketContext *context);
-
 	void shutdown();
 
 	void postShutdown();
@@ -72,35 +39,42 @@ public:
 
 	void deinitialize();
 
-	bool postAccept(SocketContext *context);
-
-	bool handleAccept(SocketContext *context, IOContext *ioContext);
-	
-
-	bool handleFirstRecvWithData(SocketContext *context, IOContext *ioContext);
-	
-	bool handleFirstRecvWithoutData(SocketContext *context, IOContext *ioContext);
-
-	bool handleRecv(SocketContext *context, IOContext *ioContext);
-
-	bool bindWithIOCP(SocketContext *context);
-
-	bool handleSend(SocketContext *context, IOContext *ioContext);
-
-	bool handleDisconnect(SocketContext *context, IOContext *ioContext);
-
 	void run();
+	
+	WSocketContextPtr getSocketContext(const string clientKey);
 
-private:
+
+protected:
+
+	bool bindWithIOCP(SSocketContextPtr &context);
 
 	bool getWSAFunction();
 
-
 	bool postAllAcceptSocket();
 
-	void SendLargeData(SocketContext *context);
+	void SendLargeData(SSocketContextPtr &context);
 
+	bool postSend(SSocketContextPtr &context);
 
+	bool postRecv(SSocketContextPtr &context);
+
+	bool postDisconnect(SSocketContextPtr &context);
+
+	bool postAccept(SSocketContextPtr &context);
+
+	bool handleAccept(SSocketContextPtr &context, IOContext *ioContext);
+
+	bool handleFirstRecvWithData(SSocketContextPtr &context, IOContext *ioContext);
+
+	bool handleFirstRecvWithoutData(SSocketContextPtr &context, IOContext *ioContext);
+
+	bool handleRecv(SSocketContextPtr &context, IOContext *ioContext);
+
+	bool handleSend(SSocketContextPtr &context, IOContext *ioContext);
+
+	bool handleDisconnect(SSocketContextPtr &context, IOContext *ioContext);
+
+	void handleError(SocketContext *context);
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;
@@ -118,7 +92,7 @@ private:
 	OperationHandler *_opHandler;
 	SocketContextManager *_clientManager;
 	SocketContextManager *_acceptSocketManager;
-	SocketContext *_listenContext;
+	SSocketContextPtr _listenContext;
 	IOBufferManager *_bufferManager;
 	IOTaskManager *_sendTaskManager;
 };

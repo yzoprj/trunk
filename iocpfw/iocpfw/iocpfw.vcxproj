@@ -94,8 +94,8 @@
     <ClCompile Include="net\AsyncSocket.cpp" />
     <ClCompile Include="net\CommunicationInformation.cpp" />
     <ClCompile Include="net\CommunicationSession.cpp" />
-    <ClCompile Include="net\iocp\IOCP.cpp" />
     <ClCompile Include="net\iocp\IOBufferManager.cpp" />
+    <ClCompile Include="net\iocp\IOCP.cpp" />
     <ClCompile Include="net\iocp\IOCPContext.cpp" />
     <ClCompile Include="net\iocp\IOCPThreadManager.cpp" />
     <ClCompile Include="net\iocp\IOTaskManager.cpp" />
@@ -104,6 +104,7 @@
     <ClCompile Include="net\SerialPort.cpp" />
     <ClCompile Include="net\SessionManager.cpp" />
     <ClCompile Include="net\SocketChannel.cpp" />
+    <ClCompile Include="net\iocp\OperationHandler.cpp" />
     <ClCompile Include="server\EventLoop.cpp" />
     <ClCompile Include="server\ServerTask.cpp" />
     <ClCompile Include="thread\CRTThreadEx.cpp" />
@@ -129,9 +130,9 @@
     <ClInclude Include="net\ByteTools.h" />
     <ClInclude Include="net\CommunicationInformation.h" />
     <ClInclude Include="net\CommunicationSession.h" />
-    <ClInclude Include="net\iocp\IOCP.h" />
     <ClInclude Include="net\iocp\IOBufferManager.h" />
     <ClInclude Include="net\IOCP.h" />
+    <ClInclude Include="net\iocp\IOCP.h" />
     <ClInclude Include="net\iocp\IOCPContext.h" />
     <ClInclude Include="net\iocp\IOCPThreadManager.h" />
     <ClInclude Include="net\iocp\IOTaskManager.h" />
@@ -140,6 +141,7 @@
     <ClInclude Include="net\SerialPort.h" />
     <ClInclude Include="net\SessionManager.h" />
     <ClInclude Include="net\SocketChannel.h" />
+    <ClInclude Include="net\iocp\OperationHandler.h" />
     <ClInclude Include="server\EventLoop.h" />
     <ClInclude Include="server\ServerTask.h" />
     <ClInclude Include="thread\ConcurrentQueue.hpp" />

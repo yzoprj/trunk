@@ -114,6 +114,9 @@
     <ClCompile Include="net\iocp\IOCP.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="net\iocp\OperationHandler.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\BitArray.h">
@@ -212,9 +215,6 @@
     <ClInclude Include="net\IOCP.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="net\iocp\IOCP.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="net\iocp\IOCPContext.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -225,6 +225,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="net\iocp\SocketContextManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\IOCP.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\OperationHandler.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

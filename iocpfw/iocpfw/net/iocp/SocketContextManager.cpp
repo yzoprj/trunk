@@ -14,41 +14,35 @@ SocketContextManager::~SocketContextManager(void)
 
 void SocketContextManager::clearAll()
 {
-	_clientMaps.clear();
-
-	list<SocketContext *>::iterator iter = _connectionList.begin();
-	while (iter != _connectionList.end())
-	{
-		delete *iter;
-		iter++;
-	}
-
-	_connectionList.clear();
+	MutexGuard guard(_cs);
+	_clientMap.clear();
+	_connectionMap.clear();
 }
 
-SocketContext *SocketContextManager::getNewContext()
+SSocketContextPtr SocketContextManager::getNewContext()
 {
 	MutexGuard gurad(_cs);
-	SocketContext *ctx = createNewContext();
+	SSocketContextPtr ptr = createNewContext();
 	
-	ctx->index = _connectionList.size();
-	_connectionList.push_back(ctx);
+	ptr->index = _connectionMap.size();
+	//_connectionMap.insert(make_pair(ctx, ctx));
 
-	return ctx;
+	return ptr;
 }
 
-SocketContext *SocketContextManager::createNewContext()
+SSocketContextPtr SocketContextManager::createNewContext()
 {
-	return new SocketContext;
+	return SSocketContextPtr(new SocketContext);
 }
 
-void SocketContextManager::addNewClient(string clientName, SocketContext *context)
+void SocketContextManager::addNewClient(const string clientName, SSocketContextPtr context)
 {
 	MutexGuard guard(_cs);
-	_clientMaps.insert(make_pair(clientName, context));
+	_clientMap.insert(make_pair(clientName, WSocketContextPtr(context)));
+	_connectionMap.insert(make_pair((int)context.get(), context));
 }
 
-string SocketContextManager::getClientName(SocketContext *context)
+string SocketContextManager::getClientName(SSocketContextPtr context)
 {
 
 	char buffer[128] = {0};
@@ -62,29 +56,69 @@ string SocketContextManager::getClientName(SocketContext *context)
 
 }
 
-void SocketContextManager::addNewClient(SocketContext *context)
+void SocketContextManager::addNewClient(SSocketContextPtr context)
 {
 	addNewClient(getClientName(context), context);
 }
 
-void SocketContextManager::removeContext(SocketContext *context)
+
+
+void SocketContextManager::removeContext(SSocketContextPtr context)
 {
 	MutexGuard guard(_cs);
-	_connectionList.remove(context);
-	delete context;
+	_connectionMap.erase((int)context.get());
+	_clientMap.erase(getClientName(context));
 }
 
-void SocketContextManager::removeClient(string clientName)
+void SocketContextManager::removeClient(const string clientName)
 {
 	MutexGuard guard(_cs);
-	map<string, SocketContext*>::iterator iter = _clientMaps.find(clientName);
-	if (iter != _clientMaps.end())
+	unordered_map<string, WSocketContextPtr>::iterator iter = _clientMap.find(clientName);
+	if (iter != _clientMap.end())
 	{
-		_connectionList.remove(iter->second);
-		delete iter->second;
+		_connectionMap.erase((int)(iter->second.lock().get()));
+
 	}
 
-	_clientMaps.erase(clientName);
+	_clientMap.erase(clientName);
 
 
+}
+
+
+
+WSocketContextPtr SocketContextManager::getContext(const string clientName)
+{
+	MutexGuard guard(_cs);
+	unordered_map<string, WSocketContextPtr>::iterator iter = _clientMap.find(clientName);
+	if (iter != _clientMap.end())
+	{
+		return iter->second;
+	}
+
+	return WSocketContextPtr();
+}
+
+bool SocketContextManager::isContextExisted(const SocketContext *context)
+{
+	MutexGuard guard(_cs);
+	unordered_map<int, SSocketContextPtr>::iterator iter = _connectionMap.find((int)context);
+	if (iter != _connectionMap.end())
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+SSocketContextPtr SocketContextManager::getContext(SocketContext *context)
+{
+	unordered_map<int, SSocketContextPtr>::iterator iter = _connectionMap.find((int)context);
+	if (iter != _connectionMap.end())
+	{
+		return iter->second;
+	}
+
+	return SSocketContextPtr();
 }

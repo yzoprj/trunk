@@ -11,23 +11,29 @@ public:
 
 	void clearAll();
 
-	SocketContext *getNewContext();
+	SSocketContextPtr getNewContext();
 
-	static SocketContext *createNewContext();
+	static SSocketContextPtr createNewContext();
 
-	static string getClientName(SocketContext *context);
+	static string getClientName(SSocketContextPtr context);
 
-	void addNewClient(string clientName, SocketContext *context);
+	void addNewClient(SSocketContextPtr context);
 
-	void addNewClient(SocketContext *context);
+	void addNewClient(const string clientName, SSocketContextPtr context);
 
-	void removeContext(SocketContext *context);
+	void removeClient(const string clientName);
 
-	void removeClient(string clientName);
+	void removeContext(SSocketContextPtr context);
+
+	WSocketContextPtr getContext(const string clientName);
+
+	SSocketContextPtr getContext(SocketContext *context);
+
+	bool isContextExisted(const SocketContext *context);
 
 private:
-	list<SocketContext *> _connectionList;
-	map<string, SocketContext *> _clientMaps;
+	unordered_map<int , SSocketContextPtr> _connectionMap;
+	unordered_map<string, WSocketContextPtr> _clientMap;
 	CriticalSection _cs;
 	
 };

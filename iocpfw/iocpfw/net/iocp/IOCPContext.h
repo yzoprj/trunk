@@ -11,6 +11,7 @@
 #include <iterator>
 #include <utility>
 #include <memory>
+#include <unordered_map>
 #include "../../thread/SyncObjects.h"
 #include "../../thread/Event.h"
 
@@ -28,19 +29,23 @@
 
 using std::list;
 using std::map;
+using std::unordered_map;
 using std::iterator;
 using std::string;
 using std::vector;
 using std::make_pair;
-
+using std::shared_ptr;
+using std::weak_ptr;
 
 struct SocketContext;
 
 typedef map<int, vector<char> *>::iterator IoBufferMapIterator;
-typedef map<string, SocketContext *>::iterator SocketContextMapIterator;
+typedef map<std::string, SocketContext *>::iterator SocketContextMapIterator;
 typedef list<SocketContext *>::iterator SocketContextListIterator;
 
 
+typedef shared_ptr<SocketContext> SSocketContextPtr;
+typedef weak_ptr<SocketContext> WSocketContextPtr;
 
 enum IOCPOperationType
 {
