@@ -5,7 +5,7 @@ IOTask::IOTask()
 {
 	totalBytes = 0;
 	opBytes = 0;
-
+	failedTimes = 0;
 }
 
 IOTask::~IOTask()
@@ -63,6 +63,18 @@ bool IOTask::isFinished()
 }
 
 
+bool IOTask::isFaliedToClear()
+{
+	if (failedTimes == ioList.size())
+	{
+		return true;
+	}
+}
+
+void IOTask::incrementFailedTimes()
+{
+	InterlockedIncrement64(&failedTimes);
+}
 
 
 IOTaskManager::IOTaskManager()

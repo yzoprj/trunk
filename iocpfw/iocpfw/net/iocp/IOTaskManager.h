@@ -11,7 +11,8 @@ struct IOTask
 	long long totalBytes;
 	long long opBytes;
 	list<IOContext *> ioList;
-
+	SSocketContextPtr owner;
+	long long failedTimes;
 	IOTask();
 
 	~IOTask();
@@ -20,7 +21,11 @@ struct IOTask
 
 	bool isFinished();
 
+	bool isFaliedToClear();
+
 	void increment(long long bytes);
+
+	void incrementFailedTimes();
 
 	void clear();
 
