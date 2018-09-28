@@ -344,7 +344,7 @@ bool IOCPManager::handleAccept(SSocketContextPtr &context, IOContext *ioContext)
 
 	IOBuffer *ioBuffer = CONTAINING_RECORD(ioContext, IOBuffer, ioContext);
 
-	return postRecv(ioBuffer);
+	return postAccept(ioBuffer);
 }
 
 
@@ -375,6 +375,10 @@ bool IOCPManager::handleRecv(SSocketContextPtr &context, IOContext *ioContext)
 
 	buffer.insert(buffer.begin() + buffer.size(), ioContext->wsaBuf.buf, ioContext->wsaBuf.buf + ioContext->overLapped.InternalHigh);
 	buffer.push_back(0);
+
+	const char *str = "123456781\n123456782\n123456783\n123456784\n123456785\n123456786\n123456787\n123456788\n123456789\n";
+	sendData(SocketContextManager::getClientName(context), str ,  strlen(str), true);
+
 	_opHandler->handleRecv(context, ioBuffer);
 
 	ioContext->clearBuffer();
@@ -721,8 +725,85 @@ void IOCPManager::handleError(SocketContext *context)
 
 WSocketContextPtr IOCPManager::getSocketContext(const string clientKey)
 {
-
-	return WSocketContextPtr();
+	return _clientManager->getContext(clientKey);
 }
 
 
+void IOCPManager::sendData(string clientKey, const char *buffer, long long length,
+					bool isCopy /* = true */, int unitSize /* = MAX_BUFFER_LENGTH */)
+{
+
+
+	if (buffer == NULL || length <= 0)
+	{
+		return;
+	}
+
+	
+	WSocketContextPtr wptr = _clientManager->getContext(clientKey);
+
+	SSocketContextPtr ptr = wptr.lock();
+	
+	if (ptr == NULL)
+	{
+		return;
+	}
+
+
+
+
+	IOTask *task = _sendTaskManager->createNewTask();
+	IOContext *ioContext = NULL;
+
+
+
+
+	if (length < unitSize)
+	{
+		ioContext = task->createNewContext(unitSize, isCopy);
+		ioContext->opType = SendOperation;
+		ioContext->setBuffer(buffer, length);
+		ioContext->isLast = true;
+	}else
+	{
+
+		int taskCount = length / unitSize;
+		int delta = length % unitSize;
+
+		for (int i = 0; i < taskCount; i++)
+		{
+			ioContext = task->createNewContext(unitSize, isCopy);
+			ioContext->setBuffer(buffer + unitSize * i, unitSize);
+			ioContext->opType = SendOperation;
+		}
+
+		if (delta > 0)
+		{
+			ioContext = task->createNewContext(unitSize, isCopy);
+			ioContext->setBuffer(buffer + unitSize * taskCount, delta);
+			//ioContext->isLast = true;
+		}
+		ioContext->isLast = true;
+
+	}
+
+	task->totalBytes = length;
+
+	
+	list<IOContext *>::iterator iter = task->ioList.begin();
+	int size = task->ioList.size();
+	for (int i = 1; i <= size; i++)
+	{
+		WSASend(ptr->sockId, &(*iter)->wsaBuf, 1, NULL, 0, &(*iter)->overLapped, NULL);
+		int result = WSAGetLastError();
+		WRITELOG(getWindowsErrorMessage(result).c_str());
+
+		if (i < size)
+		{
+			iter++;
+		}
+	}
+
+
+
+}

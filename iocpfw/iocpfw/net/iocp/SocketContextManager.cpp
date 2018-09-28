@@ -42,7 +42,7 @@ void SocketContextManager::addNewClient(const string clientName, SSocketContextP
 	_connectionMap.insert(make_pair((int)context.get(), context));
 }
 
-string SocketContextManager::getClientName(SSocketContextPtr context)
+string SocketContextManager::getClientName(const SSocketContextPtr &context)
 {
 
 	char buffer[128] = {0};
@@ -114,6 +114,7 @@ bool SocketContextManager::isContextExisted(const SocketContext *context)
 
 SSocketContextPtr SocketContextManager::getContext(SocketContext *context)
 {
+	MutexGuard guard(_cs);
 	unordered_map<int, SSocketContextPtr>::iterator iter = _connectionMap.find((int)context);
 	if (iter != _connectionMap.end())
 	{

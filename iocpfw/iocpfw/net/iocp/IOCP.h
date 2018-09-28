@@ -42,7 +42,8 @@ public:
 	void run();
 	
 	WSocketContextPtr getSocketContext(const string clientKey);
-
+	 
+	void sendData(string clientKey, const char *buffer, long long length, bool isCopy = true, int unitSize = MAX_BUFFER_LENGTH);
 
 protected:
 

@@ -117,6 +117,9 @@
     <ClCompile Include="net\iocp\OperationHandler.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="thread\CTimer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\BitArray.h">
@@ -231,6 +234,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="net\iocp\OperationHandler.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="thread\CTimer.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

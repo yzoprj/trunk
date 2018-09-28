@@ -27,6 +27,8 @@ public:
 	void stop();
 
 	void waitAll();
+
+
 private:
 	IOCPThread **_threads;
 	void **_handles; 

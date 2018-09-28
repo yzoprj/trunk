@@ -17,7 +17,7 @@ struct IOTask
 
 	~IOTask();
 
-	IOContext *createNewContext();
+	IOContext *createNewContext(int unitSize = MAX_BUFFER_LENGTH, bool usedBuffer = true);
 
 	bool isFinished();
 

@@ -1,7 +1,7 @@
 #include "IOCPContext.h"
 
 
-IOContext::IOContext(bool isClear /* = true */)
+IOContext::IOContext(int bufferSize /* = MAX_BUFFER_LENGTH */, bool isClear /* = true */)
 	:opBytes(NullOperation),
 	sockId(SOCKET_ERROR),
 	owner(NULL),
@@ -16,7 +16,7 @@ IOContext::IOContext(bool isClear /* = true */)
 		capacity = 0;
 	}else
 	{
-		capacity = MAX_BUFFER_LENGTH;
+		capacity = bufferSize;
 	}
 	reallocBuffer();
 	clearBuffer();
@@ -62,26 +62,48 @@ void IOContext::reallocBuffer(int size)
 	}
 }
 
-void IOContext::setBuffer(char *buffer, unsigned long long bufferLength, bool isClear)
+int IOContext::setBuffer(const char *inBuffer, int bufferLength)
 {
-	if (capacity > 0)
-	{
-		delete this->buffer;
-	}
+	//if (capacity > 0)
+	//{
+	//	delete this->buffer;
+	//}
 
-	if (isClear == false)
+	//if (isClear == false)
+	//{
+	//	delete buffer;
+	//	capacity = 0;
+	//	opBytes = 0;
+	//	this->buffer = buffer;
+	//	wsaBuf.buf = buffer;
+	//	wsaBuf.len = bufferLength;
+	//}else
+	//{
+	//	capacity = bufferLength;
+	//	this->buffer = buffer;
+	//}
+	int sizeCount = 0;
+	if (capacity == 0)
 	{
-		delete buffer;
-		capacity = 0;
-		opBytes = 0;
-		this->buffer = buffer;
-		wsaBuf.buf = buffer;
+		wsaBuf.buf = (char *)inBuffer;
 		wsaBuf.len = bufferLength;
+		sizeCount = bufferLength;
+		
 	}else
 	{
-		capacity = bufferLength;
-		this->buffer = buffer;
+		if (bufferLength > capacity)
+		{
+			sizeCount = capacity;
+		}else
+		{
+			sizeCount = bufferLength;
+		}
+
+		memcpy(buffer, inBuffer, sizeCount);
+		wsaBuf.len = sizeCount;
 	}
+
+	return sizeCount;
 }
 
 void IOContext::clearBuffer()

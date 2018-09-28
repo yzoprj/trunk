@@ -24,7 +24,7 @@
 
 #define LISTEN_IP "0.0.0.0"
 
-#define  MAX_POST_ACCEPT 10
+#define  MAX_POST_ACCEPT 10000
 
 
 using std::list;
@@ -74,17 +74,19 @@ struct IOContext
 
 	char *buffer;
 
-	IOContext(bool isClear = true);
+	IOContext(int bufferSize = MAX_BUFFER_LENGTH, bool isClear = true);
 
 	~IOContext();
 
 	bool isFinished();
 
+	int setBuffer(const char *sendBuffer, int length);
+
 	void reallocBuffer(int size = MAX_BUFFER_LENGTH);
 
 	void clearBuffer();
 
-	void setBuffer(char *buffer, unsigned long long bufferLength, bool isClear);
+	//void setBuffer(char *buffer, unsigned long long bufferLength, bool isClear);
 	
 };
 

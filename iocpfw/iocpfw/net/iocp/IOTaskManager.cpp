@@ -13,9 +13,9 @@ IOTask::~IOTask()
 	clear();
 }
 
-IOContext *IOTask::createNewContext()
+IOContext *IOTask::createNewContext(int unitSize, bool usedBuffer /* = true */)
 {
-	IOContext *ctx = new IOContext;
+	IOContext *ctx = new IOContext(unitSize, usedBuffer);
 	ctx->owner = this;
 	ctx->index = ioList.size();
 	ioList.push_back(ctx);
@@ -69,6 +69,8 @@ bool IOTask::isFaliedToClear()
 	{
 		return true;
 	}
+
+	return false;
 }
 
 void IOTask::incrementFailedTimes()

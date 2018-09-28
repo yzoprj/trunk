@@ -88,6 +88,7 @@
     <ClCompile Include="common\RawBuffer.cpp" />
     <ClCompile Include="common\StringBuffer.cpp" />
     <ClCompile Include="common\TimeWheel.cpp" />
+    <ClCompile Include="thread\CTimer.cpp" />
     <ClCompile Include="iocpfw.cpp" />
     <ClCompile Include="net\Acceptor.cpp" />
     <ClCompile Include="net\AnonymousPipe.cpp" />
@@ -124,6 +125,7 @@
     <ClInclude Include="common\RawBuffer.h" />
     <ClInclude Include="common\StringBuffer.h" />
     <ClInclude Include="common\TimeWheel.h" />
+    <ClInclude Include="thread\CTimer.h" />
     <ClInclude Include="net\Acceptor.h" />
     <ClInclude Include="net\AnonymousPipe.h" />
     <ClInclude Include="net\ASyncSocket.h" />

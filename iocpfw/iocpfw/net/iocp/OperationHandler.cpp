@@ -5,7 +5,7 @@
 void DefaultOperationHandler::handleRecv(SSocketContextPtr &sockContext, IOBuffer *ioBuffer)
 {
 	char buffer[8096] = {0};
-	sprintf(buffer, "Index[%d]recv bytes[%u][%s]", ioBuffer->ioContext.index, ioBuffer->ioContext.overLapped.InternalHigh
+	sprintf(buffer, "Client[%s]send bytes[%u][%s]", SocketContextManager::getClientName(sockContext).c_str(), ioBuffer->ioContext.overLapped.InternalHigh
 		,ioBuffer->cache.data());
 
 	WRITELOG(buffer);

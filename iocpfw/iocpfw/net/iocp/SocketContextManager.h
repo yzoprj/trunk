@@ -15,7 +15,7 @@ public:
 
 	static SSocketContextPtr createNewContext();
 
-	static string getClientName(SSocketContextPtr context);
+	static string getClientName(const SSocketContextPtr &context);
 
 	void addNewClient(SSocketContextPtr context);
 
