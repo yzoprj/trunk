@@ -1,21 +1,10 @@
 // iocpfw.cpp : 定义控制台应用程序的入口点。
 //
+#include "thread/CTimer.h"
 #include "net/iocp/IOCP.h"
 #include "net/iocp/IOCPThreadManager.h"
-static string getWindowsErrorMessage(DWORD errCode)
-{
-	char buffer[1024] = {0};
-
-	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
-		NULL,
-		errCode,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPSTR)buffer,
-		1024, NULL);
-
-	return buffer;
-
-}
+#include "thread/CRTThreadEx.h"
+#include <Windows.h>
 
 int main(int argc, char* argv[])
 {
@@ -33,6 +22,7 @@ int main(int argc, char* argv[])
 	manager.init();
 	manager.start();
 	manager.waitAll();
+
 	return 0;
 }
 
