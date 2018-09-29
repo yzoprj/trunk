@@ -1,8 +1,6 @@
 
 #ifndef _CRT_THREAD_H_
 #define _CRT_THREAD_H_
-#include <windows.h>
-
 
 class CRTThreadEx
 {
@@ -14,7 +12,7 @@ public:
 		RUN_THREAD = 1
 	};
 	CRTThreadEx(void);
-	CRTThreadEx(DWORD timeout);
+	CRTThreadEx(unsigned long exitTime);
 	~CRTThreadEx(void);
 
 	bool suspend();
@@ -22,11 +20,11 @@ public:
 	bool start();
 	bool destroy();
 	bool resume();
-	bool wait(DWORD waitTime);
-	void setExitCode(DWORD isExit) { exitCode = isExit;}
+	bool wait(unsigned long waitTime);
+	void setExitCode(unsigned long isExit) { exitCode = isExit;}
 	void setNameInternal(const char* name);  
 	void closeHandle();
-	HANDLE getThreadHandle() {return hThread;}
+	void * getThreadHandle() {return hThread;}
 	unsigned int getThreadID() const {return threadID;}
 	bool isBusy() const {return busied;}
 	bool isRunning() const { return running;};
@@ -35,20 +33,21 @@ protected:
 	virtual void run() = 0;
 private:
 
-	static unsigned int CALLBACK thrdProc(void * arg);
+	static unsigned int __stdcall thrdProc(void * arg);
 
 
 protected:
 
-	DWORD exitCode;
-	DWORD timeout;
+	unsigned long exitCode;
+	unsigned long _objectWaitTime;
 	bool busied;
+	bool running;
 private:
 
-	HANDLE hThread;
+	void * hThread;
 	unsigned int threadID;
 
-	bool running;
+	
 
 
 };

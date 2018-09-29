@@ -117,7 +117,10 @@
     <ClCompile Include="net\iocp\OperationHandler.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="thread\CTimer.cpp">
+    <ClCompile Include="thread\CThreadTimer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="thread\WaitableTimer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -236,7 +239,10 @@
     <ClInclude Include="net\iocp\OperationHandler.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="thread\CTimer.h">
+    <ClInclude Include="thread\CThreadTimer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="thread\WaitableTimer.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

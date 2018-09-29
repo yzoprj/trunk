@@ -23,6 +23,8 @@ public:
 
 	static void deinitializeSocketLibrary();
 
+	bool initWSAFunction();
+
 	bool start();
 
 	void stop();
@@ -30,6 +32,9 @@ public:
 	void shutdown();
 
 	void postShutdown();
+
+
+	void postConnection(const char *ip, int port);
 
 	void closeAll();
 
@@ -49,7 +54,7 @@ protected:
 
 	bool bindWithIOCP(SSocketContextPtr &context);
 
-	bool getWSAFunction();
+	
 
 	bool postAllAcceptSocket();
 
@@ -76,13 +81,17 @@ protected:
 	bool handleDisconnect(SSocketContextPtr &context, IOContext *ioContext);
 
 	void handleError(SocketContext *context);
+
+	void handleConnection(SSocketContextPtr &context, IOContext *ioContext);
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;
 
-	LPFN_GETACCEPTEXSOCKADDRS _lpfnAcceptExSockAddress;
+	LPFN_GETACCEPTEXSOCKADDRS _lpfnGetAcceptExSockAddress;
 
 	LPFN_DISCONNECTEX _lpfnDisconnectEx;
+
+	LPFN_CONNECTEX _lpfinConnectEx;
 
 	Event _shutdownEvent;
 

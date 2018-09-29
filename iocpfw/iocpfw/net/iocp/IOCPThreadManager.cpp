@@ -47,6 +47,7 @@ bool IOCPThreadManager::init()
 
 	_manager.initializeSocketLibrary();
 	_manager.initializeIOCP(_threadCount);
+	_manager.initWSAFunction();
 	_manager.initializeListenSocket();
 
 	return true;

@@ -54,7 +54,9 @@ enum IOCPOperationType
 	RecvOperation = 0x02,
 	SendOperation = 0x04,
 	ErrorOperation = 0x8,
-	DisconnectOperation = 0x10
+	ConnnectionOperation = 0x10,
+	DisconnectOperation = 0x20
+
 };
 
 // 自定义重叠结构定义

@@ -20,22 +20,24 @@ CRTThreadEx::CRTThreadEx(void)
 	running = FALSE;
 	busied = FALSE;
 	exitCode = 0;
-	timeout = 5;
+	_objectWaitTime = INFINITE;
 	hThread = (HANDLE)_beginthreadex(NULL, 0, thrdProc, this, CREATE_SUSPENDED, &threadID);
 }
 
 
-CRTThreadEx::CRTThreadEx(DWORD timeout)
+CRTThreadEx::CRTThreadEx(unsigned long exitTime)
 {
 
 	running = FALSE;
 	busied = FALSE;
-	this->timeout = timeout;
+	this->_objectWaitTime = exitTime;
 	exitCode = 0;
-	hThread = INVALID_HANDLE_VALUE;
+	
+	hThread = (HANDLE)_beginthreadex(NULL, 0, thrdProc, this, CREATE_SUSPENDED, &threadID);
 }
 bool CRTThreadEx::start()
 {
+	running = true;
 	if (hThread != INVALID_HANDLE_VALUE)
 	{
 		exitCode = 1;
@@ -70,13 +72,13 @@ bool CRTThreadEx::stop()
 	{
 
 		exitCode = 0;
-
-		if (WaitForSingleObject(hThread, timeout * 1000) == WAIT_TIMEOUT)
+		running = false;
+		if (WaitForSingleObject(hThread, _objectWaitTime) == WAIT_TIMEOUT)
 		{
 			destroy();
 		}
 		
-		running = false;
+		
 	
 	}
 	closeHandle();

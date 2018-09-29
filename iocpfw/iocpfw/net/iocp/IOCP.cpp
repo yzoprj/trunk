@@ -25,9 +25,9 @@ IOCPManager::IOCPManager(OperationHandler *opHandler /* = NULL */)
 {
 	_IOCPHandle = INVALID_HANDLE_VALUE;
 	_lpfnAcceptEx = NULL;
-	_lpfnAcceptExSockAddress = NULL;
+	_lpfnGetAcceptExSockAddress = NULL;
 	_lpfnDisconnectEx = NULL;
-	
+	_lpfinConnectEx = NULL;
 	_clientManager = new SocketContextManager;
 	_acceptContextManger = new IOBufferManager;
 	_bufferManager = new IOBufferManager;
@@ -90,7 +90,6 @@ bool IOCPManager::initializeListenSocket()
 
 	WRITELOG("Create New Listen Socket Success!");
 	
-	getWSAFunction();
 
 	if (CreateIoCompletionPort((HANDLE)_listenContext->sockId, _IOCPHandle,(ULONG_PTR)_listenContext.get(), 0) == NULL)
 	{
@@ -113,6 +112,14 @@ bool IOCPManager::initializeListenSocket()
 		_listenContext->close();
 		return false;
 	}
+
+
+	//if (initWSAFunction() == false)
+	//{
+	//	_listenContext->close();
+	//	return false;
+	//}
+
 
 	WRITELOG("Listen Socket Bind Success!");
 
@@ -154,7 +161,7 @@ bool IOCPManager::postAllAcceptSocket()
 }
 
 
-bool IOCPManager::getWSAFunction()
+bool IOCPManager::initWSAFunction()
 {
 	// AcceptEx 和 GetAcceptExSockaddrs 的GUID，用于导出函数指针
 	GUID guidAcceptEx = WSAID_ACCEPTEX;  
@@ -162,7 +169,9 @@ bool IOCPManager::getWSAFunction()
 	GUID guidDisConnectEx = WSAID_DISCONNECTEX;
 	DWORD dwBytes = 0;
 
-	int result = WSAIoctl(_listenContext->sockId,
+	SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+
+	int result = WSAIoctl(sock,
 		SIO_GET_EXTENSION_FUNCTION_POINTER,
 		&guidAcceptEx,
 		sizeof(guidAcceptEx),
@@ -173,30 +182,32 @@ bool IOCPManager::getWSAFunction()
 		NULL);
 	if(result == -1)
 	{
+		closesocket(sock);
 		return false;
 	}
 
 	WRITELOG("Get AcceptEx Success!");
 
-	result = WSAIoctl(_listenContext->sockId,
+	result = WSAIoctl(sock,
 		SIO_GET_EXTENSION_FUNCTION_POINTER,
 		&guidGetAcceptExSockAddrs,
 		sizeof(guidGetAcceptExSockAddrs),
-		&_lpfnAcceptExSockAddress,
-		sizeof(_lpfnAcceptExSockAddress),
+		&_lpfnGetAcceptExSockAddress,
+		sizeof(_lpfnGetAcceptExSockAddress),
 		&dwBytes,
 		NULL,
 		NULL);
 
 	if (result == -1)
 	{
+		closesocket(sock);
 		return false;
 	}
 
 
 	WRITELOG("Get GetAcceptExSocketAddress Success!");
 
-	result = WSAIoctl(_listenContext->sockId,
+	result = WSAIoctl(sock,
 		SIO_GET_EXTENSION_FUNCTION_POINTER,
 		&guidDisConnectEx,
 		sizeof(guidDisConnectEx),
@@ -208,11 +219,33 @@ bool IOCPManager::getWSAFunction()
 
 	if (result == -1)
 	{
+		closesocket(sock);
 		return false;
 	}
 
 	WRITELOG("Get DisconnectEx Success!");
 
+	GUID guidConnectionEx = WSAID_CONNECTEX;  
+
+	result = WSAIoctl(sock,
+		SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guidConnectionEx,
+		sizeof(guidConnectionEx),
+		&_lpfinConnectEx,
+		sizeof(_lpfinConnectEx),
+		&dwBytes,
+		NULL,
+		NULL);
+
+	if(result == -1)
+	{
+		closesocket(sock);
+		return false;
+	}
+
+	WRITELOG("Get ConnectionEx Success");
+
+	closesocket(sock);
 	return true;
 }
 
@@ -488,7 +521,7 @@ bool IOCPManager::handleFirstRecvWithData(SSocketContextPtr &context, IOContext 
 	//						(sockaddr **)&clientAddr,
 	//						&clientLength);
 
-	_lpfnAcceptExSockAddress(ioContext->wsaBuf.buf, 
+	_lpfnGetAcceptExSockAddress(ioContext->wsaBuf.buf, 
 		0,
 		clientLength + 16,
 		clientLength + 16,
@@ -593,7 +626,7 @@ bool IOCPManager::handleFirstRecvWithoutData(SSocketContextPtr &context, IOConte
 	//						(sockaddr **)&clientAddr,
 	//						&clientLength);
 
-	_lpfnAcceptExSockAddress(ioContext->wsaBuf.buf, 
+	_lpfnGetAcceptExSockAddress(ioContext->wsaBuf.buf, 
 		0,
 		clientLength + 16,
 		clientLength + 16,
@@ -806,4 +839,22 @@ void IOCPManager::sendData(string clientKey, const char *buffer, long long lengt
 
 
 
+}
+
+
+bool IOCPManager::start()
+{
+
+	return true;
+}
+
+void IOCPManager::stop()
+{
+	return ;
+}
+
+void IOCPManager::postConnection(const char *ip, int port)
+{
+
+	
 }

@@ -28,6 +28,11 @@ void DefaultOperationHandler::handleAccept(SSocketContextPtr &sockContext)
 	WRITELOG(buffer);
 }
 
+void DefaultOperationHandler::handleConnection(SSocketContextPtr &sockContext, IOContext *ioConext)
+{
+
+}
+
 void DefaultOperationHandler::handleDisconnect(SSocketContextPtr &sockContext)
 {
 

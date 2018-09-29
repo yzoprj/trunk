@@ -12,7 +12,11 @@ public:
 
 	virtual void handleAccept(SSocketContextPtr &sockContext) = 0;
 
+	virtual void handleConnection(SSocketContextPtr &sockContext, IOContext *ioConext) = 0;
+
 	virtual void handleDisconnect(SSocketContextPtr &sockContext) = 0;
+
+
 };
 
 class DefaultOperationHandler : public OperationHandler
@@ -27,6 +31,7 @@ public:
 
 	void handleAccept(SSocketContextPtr &sockContext);
 
+	void handleConnection(SSocketContextPtr &sockContext, IOContext *ioConext);
 
 	void handleDisconnect(SSocketContextPtr &sockContext);
 
