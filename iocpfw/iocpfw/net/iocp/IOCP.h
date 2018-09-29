@@ -83,6 +83,8 @@ protected:
 	void handleError(SocketContext *context);
 
 	void handleConnection(SSocketContextPtr &context, IOContext *ioContext);
+
+	void getHostIP();
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;
@@ -98,7 +100,7 @@ private:
 	HANDLE _IOCPHandle;
 
 	int _threadCount;
-
+	char _hostIP[MAX_PATH];
 	OperationHandler *_opHandler;
 	SocketContextManager *_clientManager;
 	IOBufferManager *_acceptContextManger;

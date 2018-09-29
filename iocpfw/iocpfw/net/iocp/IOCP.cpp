@@ -161,6 +161,19 @@ bool IOCPManager::postAllAcceptSocket()
 }
 
 
+void IOCPManager::getHostIP()
+{
+	char hostName[MAX_PATH];
+
+	gethostname(hostName, MAX_PATH);
+
+	hostent *host =  gethostbyname(hostName);
+
+	inet_ntop(AF_INET, (((struct in_addr*)host->h_addr)), hostName, MAX_PATH);
+
+	strcpy(_hostIP, hostName);
+}
+
 bool IOCPManager::initWSAFunction()
 {
 	// AcceptEx 和 GetAcceptExSockaddrs 的GUID，用于导出函数指针
@@ -168,6 +181,10 @@ bool IOCPManager::initWSAFunction()
 	GUID guidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS; 
 	GUID guidDisConnectEx = WSAID_DISCONNECTEX;
 	DWORD dwBytes = 0;
+
+
+	getHostIP();
+
 
 	SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 
@@ -705,7 +722,7 @@ void IOCPManager::run()
 		if (result == 0)
 		{
 			DWORD dwError = GetLastError();
-
+			WRITELOG(getWindowsErrorMessage(dwError).c_str());
 			continue;
 		}else
 		{
@@ -856,5 +873,45 @@ void IOCPManager::stop()
 void IOCPManager::postConnection(const char *ip, int port)
 {
 
+	unsigned long dwBytes = 0;
+
+	SSocketContextPtr ptr =  _clientManager->getNewContext();
+	ptr->sockAddr.sin_family = AF_INET;
+	ptr->sockAddr.sin_port = htons(port);
+	ptr->sockAddr.sin_addr.S_un.S_addr = inet_addr(ip);
+
+	ptr->sockId = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	SOCKADDR_IN addr;
+	addr.sin_family = AF_INET;
+	addr.sin_port = 0;
+	addr.sin_addr.S_un.S_addr = inet_addr(_hostIP);
+
 	
+	if (bind(ptr->sockId, (sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR)
+	{
+		WRITELOG(getWindowsErrorMessage(WSAGetLastError()).c_str());
+		return;
+	}
+
+	if (bindWithIOCP(ptr) == false)
+	{
+		return;
+	}
+
+	_clientManager->addNewClient(ptr);
+	IOBuffer *ioBuffer = _bufferManager->addNewIoBuffer((int)ptr.get());
+	ioBuffer->ioContext.opType = ConnnectionOperation;
+	if (_lpfinConnectEx(ptr->sockId, (sockaddr *)&ptr->sockAddr,
+			sizeof(SOCKADDR_IN),
+			ioBuffer->ioContext.wsaBuf.buf,
+			0,
+			&dwBytes, &ioBuffer->ioContext.overLapped) == FALSE)
+	{
+		DWORD result = WSAGetLastError();
+		if (result != ERROR_IO_PENDING)
+		{
+			WRITELOG(getWindowsErrorMessage(result).c_str());
+		}
+	}
+
 }

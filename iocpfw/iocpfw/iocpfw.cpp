@@ -47,10 +47,11 @@ int main(int argc, char* argv[])
 	IOCPManager::initializeSocketLibrary();
 	
 
-	//manager.initializeIOCP();
+	manager.initializeIOCP();
 	manager.initWSAFunction();
-	//manager.initializeListenSocket();
-	//manager.run();
+	manager.initializeListenSocket();
+	manager.postConnection("192.168.1.52", 10008);
+	manager.run();
 	
 	//manager.deinitializeSocketLibrary();
 
