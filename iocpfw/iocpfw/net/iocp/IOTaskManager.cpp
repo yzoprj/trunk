@@ -5,7 +5,7 @@ IOTask::IOTask()
 {
 	totalBytes = 0;
 	opBytes = 0;
-	failedTimes = 0;
+	finishedTimes = 0;
 }
 
 IOTask::~IOTask()
@@ -63,9 +63,9 @@ bool IOTask::isFinished()
 }
 
 
-bool IOTask::isFaliedToClear()
+bool IOTask::isAllFinishedToClear()
 {
-	if (failedTimes == ioList.size())
+	if (finishedTimes == ioList.size())
 	{
 		return true;
 	}
@@ -73,9 +73,9 @@ bool IOTask::isFaliedToClear()
 	return false;
 }
 
-void IOTask::incrementFailedTimes()
+void IOTask::incrementFinishTimes()
 {
-	InterlockedIncrement64(&failedTimes);
+	InterlockedIncrement64(&finishedTimes);
 }
 
 
@@ -93,16 +93,16 @@ IOTask *IOTaskManager::createNewTask()
 {
 	MutexGuard guard(_cs);
 	IOTask *task = new IOTask;
-	task->key = (int)task;
-	_taskMap.insert(make_pair((int)task, task));
+	task->key = (long)task;
+	_taskMap.insert(make_pair((long)task, task));
 
 	return task;
 }
 
-void IOTaskManager::removeTask(int key)
+void IOTaskManager::removeTask(long key)
 {
 	MutexGuard gurad(_cs);
-	map<int, IOTask*>::iterator iter = _taskMap.find(key);
+	map<long, IOTask*>::iterator iter = _taskMap.find(key);
 	if (iter == _taskMap.end())
 	{
 		return;
@@ -117,7 +117,7 @@ void IOTaskManager::removeTask(int key)
 
 void IOTaskManager::clearAll()
 {
-	map<int, IOTask *>::iterator iter = _taskMap.begin();
+	map<long, IOTask *>::iterator iter = _taskMap.begin();
 
 	while (iter != _taskMap.end())
 	{

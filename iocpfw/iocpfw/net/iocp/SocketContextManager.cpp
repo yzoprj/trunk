@@ -39,7 +39,7 @@ void SocketContextManager::addNewClient(const string clientName, SSocketContextP
 {
 	MutexGuard guard(_cs);
 	_clientMap.insert(make_pair(clientName, WSocketContextPtr(context)));
-	_connectionMap.insert(make_pair((int)context.get(), context));
+	_connectionMap.insert(make_pair((long)context.get(), context));
 }
 
 string SocketContextManager::getClientName(const SSocketContextPtr &context)
@@ -66,7 +66,7 @@ void SocketContextManager::addNewClient(SSocketContextPtr context)
 void SocketContextManager::removeContext(SSocketContextPtr context)
 {
 	MutexGuard guard(_cs);
-	_connectionMap.erase((int)context.get());
+	_connectionMap.erase((long)context.get());
 	_clientMap.erase(getClientName(context));
 }
 
@@ -76,7 +76,7 @@ void SocketContextManager::removeClient(const string clientName)
 	unordered_map<string, WSocketContextPtr>::iterator iter = _clientMap.find(clientName);
 	if (iter != _clientMap.end())
 	{
-		_connectionMap.erase((int)(iter->second.lock().get()));
+		_connectionMap.erase((long)(iter->second.lock().get()));
 
 	}
 
@@ -102,7 +102,7 @@ WSocketContextPtr SocketContextManager::getContext(const string clientName)
 bool SocketContextManager::isContextExisted(const SocketContext *context)
 {
 	MutexGuard guard(_cs);
-	unordered_map<int, SSocketContextPtr>::iterator iter = _connectionMap.find((int)context);
+	unordered_map<long, SSocketContextPtr>::iterator iter = _connectionMap.find((long)context);
 	if (iter != _connectionMap.end())
 	{
 		return true;
@@ -115,7 +115,7 @@ bool SocketContextManager::isContextExisted(const SocketContext *context)
 SSocketContextPtr SocketContextManager::getContext(SocketContext *context)
 {
 	MutexGuard guard(_cs);
-	unordered_map<int, SSocketContextPtr>::iterator iter = _connectionMap.find((int)context);
+	unordered_map<long, SSocketContextPtr>::iterator iter = _connectionMap.find((long)context);
 	if (iter != _connectionMap.end())
 	{
 		return iter->second;

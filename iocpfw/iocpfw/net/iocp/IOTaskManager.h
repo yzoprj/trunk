@@ -6,13 +6,13 @@
 
 struct IOTask
 {
-	int key;
+	long key;
 
 	long long totalBytes;
 	long long opBytes;
 	list<IOContext *> ioList;
-	SSocketContextPtr owner;
-	long long failedTimes;
+	long owner;
+	long long finishedTimes;
 	IOTask();
 
 	~IOTask();
@@ -21,11 +21,11 @@ struct IOTask
 
 	bool isFinished();
 
-	bool isFaliedToClear();
+	bool isAllFinishedToClear();
 
 	void increment(long long bytes);
 
-	void incrementFailedTimes();
+	void incrementFinishTimes();
 
 	void clear();
 
@@ -42,11 +42,11 @@ public:
 
 	IOTask *createNewTask();
 
-	void removeTask(int key);
+	void removeTask(long key);
 
 	void clearAll();
 
 private:
-	map<int, IOTask *> _taskMap;
+	map<long, IOTask *> _taskMap;
 	CriticalSection _cs;
 };

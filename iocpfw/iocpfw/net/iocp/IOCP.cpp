@@ -450,7 +450,8 @@ bool IOCPManager::handleSend(SSocketContextPtr &context, IOContext *ioContext)
 	{
 		IOTask *task = (IOTask *)ioContext->owner;
 		task->increment(ioContext->overLapped.InternalHigh);
-		if (task->isFinished())
+		task->incrementFinishTimes();
+		if (task->isFinished() || task->isAllFinishedToClear())
 		{
 			_sendTaskManager->removeTask(task->key);
 		}

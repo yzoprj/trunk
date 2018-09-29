@@ -32,7 +32,7 @@ public:
 	bool isContextExisted(const SocketContext *context);
 
 private:
-	unordered_map<int , SSocketContextPtr> _connectionMap;
+	unordered_map<long , SSocketContextPtr> _connectionMap;
 	unordered_map<string, WSocketContextPtr> _clientMap;
 	CriticalSection _cs;
 	
