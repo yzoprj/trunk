@@ -404,17 +404,17 @@ bool IOCPManager::handleRecv(SSocketContextPtr &context, IOContext *ioContext)
 
 
 	// recieve 0 byte means remote host is disconnected
-	if (ioContext->overLapped.InternalHigh == 0)
-	{
-		_bufferManager->removeIoBuffer((int)context.get());
-		string str = SocketContextManager::getClientName(context) + " is disconnected!";
-		_clientManager->removeClient(SocketContextManager::getClientName(context));
-		
-		
-		WRITELOG(str.c_str());
-		
-		return false;
-	}
+	//if (ioContext->overLapped.InternalHigh == 0)
+	//{
+	//	_bufferManager->removeIoBuffer((int)context.get());
+	//	string str = SocketContextManager::getClientName(context) + " is disconnected!";
+	//	_clientManager->removeClient(SocketContextManager::getClientName(context));
+	//	
+	//	
+	//	WRITELOG(str.c_str());
+	//	
+	//	return false;
+	//}
 
 	IOBuffer *ioBuffer = CONTAINING_RECORD(ioContext, IOBuffer, ioContext);
 	vector<char> &buffer = ioBuffer->cache;
@@ -426,8 +426,8 @@ bool IOCPManager::handleRecv(SSocketContextPtr &context, IOContext *ioContext)
 	buffer.insert(buffer.begin() + buffer.size(), ioContext->wsaBuf.buf, ioContext->wsaBuf.buf + ioContext->overLapped.InternalHigh);
 	buffer.push_back(0);
 
-	const char *str = "123456781\n123456782\n123456783\n123456784\n123456785\n123456786\n123456787\n123456788\n123456789\n";
-	sendData(SocketContextManager::getClientName(context), str ,  strlen(str), true);
+	/*const char *str = "123456781\n123456782\n123456783\n123456784\n123456785\n123456786\n123456787\n123456788\n123456789\n";
+	sendData(SocketContextManager::getClientName(context), str ,  strlen(str), true);*/
 
 	_opHandler->handleRecv(context, ioBuffer);
 
@@ -451,10 +451,8 @@ bool IOCPManager::handleSend(SSocketContextPtr &context, IOContext *ioContext)
 		IOTask *task = (IOTask *)ioContext->owner;
 		task->increment(ioContext->overLapped.InternalHigh);
 		task->incrementFinishTimes();
-		if (task->isFinished() || task->isAllFinishedToClear())
-		{
-			_sendTaskManager->removeTask(task->key);
-		}
+		_sendTaskManager->removeTask((long)task, false);
+	
 	}
 
 
@@ -576,46 +574,47 @@ bool IOCPManager::handleFirstRecvWithData(SSocketContextPtr &context, IOContext 
 
 void IOCPManager::SendLargeData(SSocketContextPtr &context)
 {
-	IOTask *task = _sendTaskManager->createNewTask();
-	unsigned long long totalSize = 1024 * 1024 * 512;
+	//IOTask *task = _sendTaskManager->createNewTask();
+	unsigned long long totalSize = 1024 * 1024 * 12;
 	char *buffer = new char[totalSize];
-	task->totalBytes = totalSize;
+	//task->totalBytes = totalSize;
 	memset(buffer, '1', totalSize);
 
-	unsigned long long countSize = 0;
-	while (countSize < totalSize)
-	{
-		if (totalSize - countSize < context->ioContext->wsaBuf.len)
-		{
+	//unsigned long long countSize = 0;
+	//while (countSize < totalSize)
+	//{
+	//	if (totalSize - countSize < context->ioContext->wsaBuf.len)
+	//	{
 
-		}
+	//	}
 
-		IOContext *ioContext = task->createNewContext();
+	//	IOContext *ioContext = task->createNewContext();
 
-		memcpy(ioContext->buffer, buffer + countSize, ioContext->capacity);
-		countSize += ioContext->capacity;
-		ioContext->opType = SendOperation;
-		ioContext->sockId = context->sockId;
+	//	memcpy(ioContext->buffer, buffer + countSize, ioContext->capacity);
+	//	countSize += ioContext->capacity;
+	//	ioContext->opType = SendOperation;
+	//	ioContext->sockId = context->sockId;
 
-		
-	}
+	//	
+	//}
 
+	
+
+	//if (task->ioList.cbegin() != task->ioList.end())
+	//{
+	//	task->ioList.back()->isLast = true;
+	//}
+
+	//list<IOContext *>::iterator iter = task->ioList.begin();
+	//for (;iter != task->ioList.end(); iter++)
+	//{
+	//	WSASend(context->sockId, &(*iter)->wsaBuf, 1, NULL, 0, &(*iter)->overLapped, NULL);
+	//	int result = WSAGetLastError();
+	//	WRITELOG(getWindowsErrorMessage(result).c_str());
+	//}
+	
+	sendData(SocketContextManager::getClientName(context), buffer, totalSize);
 	delete buffer;
-
-	if (task->ioList.cbegin() != task->ioList.end())
-	{
-		task->ioList.back()->isLast = true;
-	}
-
-	list<IOContext *>::iterator iter = task->ioList.begin();
-	for (;iter != task->ioList.end(); iter++)
-	{
-		WSASend(context->sockId, &(*iter)->wsaBuf, 1, NULL, 0, &(*iter)->overLapped, NULL);
-		int result = WSAGetLastError();
-		WRITELOG(getWindowsErrorMessage(result).c_str());
-	}
-	
-	
 
 }
 
@@ -666,14 +665,14 @@ bool IOCPManager::handleFirstRecvWithoutData(SSocketContextPtr &context, IOConte
 
 	_opHandler->handleAccept(newContext);
 
-//	SendLargeData(newContext);
+	SendLargeData(newContext);
 
 	if (this->postRecv(ioBuffer) == false)
 	{
 		return false;
 	}
 
-	
+	//context->close();
 
 	return true;
 }
@@ -715,16 +714,13 @@ void IOCPManager::run()
 										(PULONG_PTR)&context,
 										&ol,INFINITE);
 
-		if (context == NULL)
+		QueueErrorCode errCode = handleError(context, ol, result, handleBytes);
+		if (errCode == ERR_CONTINUE)
+		{
+			continue;
+		}else if (errCode == ERR_EXIT)
 		{
 			break;
-		}
-
-		if (result == 0)
-		{
-			DWORD dwError = GetLastError();
-			WRITELOG(getWindowsErrorMessage(dwError).c_str());
-			continue;
 		}else
 		{
 			SSocketContextPtr contextPtr;
@@ -749,22 +745,24 @@ void IOCPManager::run()
 
 			switch(ioContext->opType)
 			{
-				case RecvOperation:
-					handleRecv(contextPtr, ioContext);
-					break;
-				case AcceptOperation:
-					handleAccept(contextPtr, ioContext);
-					break;
-				case SendOperation:
-					handleSend(contextPtr, ioContext);
-					break;
-				default:
-					break;
+			case RecvOperation:
+				handleRecv(contextPtr, ioContext);
+				break;
+			case AcceptOperation:
+				handleAccept(contextPtr, ioContext);
+				break;
+			case SendOperation:
+				handleSend(contextPtr, ioContext);
+				break;
+			case ConnnectionOperation:
+				break;
+			case DisconnectOperation:
+				break;
+			default:
+				break;
 			}
 
-
 		}
-
 	}
 }
 
@@ -774,20 +772,134 @@ void IOCPManager::handleError(SocketContext *context)
 
 }
 
+IOCPManager::QueueErrorCode IOCPManager::handleError(SocketContext *sockContext, OVERLAPPED *ol, unsigned long result, unsigned long dwBytes)
+{
+	int retCode = 0;
+
+	// 特定错误信息
+	if (sockContext == NULL && ol == NULL)
+	{
+		return ERR_EXIT;
+	}
+
+	// 异常返回
+	if (result == FALSE)
+	{
+		unsigned long errCode = GetLastError();
+		WRITELOG(getWindowsErrorMessage(errCode).c_str());
+
+		if (ol == NULL)
+		{
+			return ERR_CONTINUE;
+		}else
+		{
+			IOContext *ioContext = CONTAINING_RECORD(ol, IOContext, overLapped);
+
+
+			// 当传输错误的时候，累计已经返回的投递任务
+			// 当达到task的任务总数时候，则清除
+			// 并返回继续标记，处理以后任务
+			if (ioContext->opType == SendOperation)
+			{
+				if (ioContext->owner != NULL)
+				{
+					IOTask *task = (IOTask *)ioContext->owner;
+
+					task->incrementFinishTimes();
+
+					//char buffer[256] = {0};
+
+					//sprintf(buffer, "Index[%d]==accumulate[%d]==total[%d]", ioContext->index, task->finishedTimes,
+					//								task->ioList.size());
+					//WRITELOG(buffer);
+					_sendTaskManager->removeTask((int)task, false);
+				}
+				
+			}else if (ioContext->opType == RecvOperation ||
+						ioContext->opType == ConnnectionOperation)
+			{
+				// 发送操作出现错误，直接断开连接
+				SSocketContextPtr contextPtr = _clientManager->getContext(sockContext);
+
+				// context 已经被删除
+				if (contextPtr.get() == NULL )
+				{
+					return ERR_CONTINUE;
+				}
+
+				// context 等于监听套接字，意味着已经出现严重错误
+				// 则退出
+				if (contextPtr.get() == _listenContext.get())
+				{
+					return ERR_CONTINUE;
+				}
+				string str = SocketContextManager::getClientName(contextPtr) + " is disconnected with error";
+				WRITELOG(str.c_str());
+				_clientManager->removeContext(contextPtr);
+				_bufferManager->removeIoBuffer((long)contextPtr.get());
+
+			}
+
+			return ERR_CONTINUE;
+
+		}
+
+	}else
+	{
+		// GetQueueCompletionStatus() 返回成功情况
+		
+		// 出现传输为0的情况，客户端已经断开
+		if (dwBytes == 0)
+		{
+			IOContext *ioContext = CONTAINING_RECORD(ol, IOContext, overLapped);
+			SSocketContextPtr contextPtr = _clientManager->getContext(sockContext);
+			//对方主动关闭连接
+			if(ioContext->opType == RecvOperation)
+			{
+				_clientManager->removeContext(contextPtr);
+				_bufferManager->removeIoBuffer((long)contextPtr.get());
+
+				string str = SocketContextManager::getClientName(contextPtr) + " is disconnected normally";
+				WRITELOG(str.c_str());
+				return ERR_CONTINUE;
+			}
+		}
+
+	}
+
+	return ERR_NEXT;
+}
+
+
+bool IOCPManager::isSocketAlive(SSocketContextPtr &ptr)
+{
+	int sentBytes = send(ptr->sockId, "", 0, 0);
+
+	if (sentBytes == -1)
+	{
+		unsigned long dwCode = WSAGetLastError();
+
+		WRITELOG(getWindowsErrorMessage(dwCode).c_str());
+		return false;
+	}
+
+	return true;
+}
+
 WSocketContextPtr IOCPManager::getSocketContext(const string clientKey)
 {
 	return _clientManager->getContext(clientKey);
 }
 
 
-void IOCPManager::sendData(string clientKey, const char *buffer, long long length,
+long IOCPManager::sendData(string clientKey, const char *buffer, long long length,
 					bool isCopy /* = true */, int unitSize /* = MAX_BUFFER_LENGTH */)
 {
 
 
 	if (buffer == NULL || length <= 0)
 	{
-		return;
+		return -1;
 	}
 
 	
@@ -797,7 +909,7 @@ void IOCPManager::sendData(string clientKey, const char *buffer, long long lengt
 	
 	if (ptr == NULL)
 	{
-		return;
+		return -2;
 	}
 
 
@@ -807,7 +919,10 @@ void IOCPManager::sendData(string clientKey, const char *buffer, long long lengt
 	IOContext *ioContext = NULL;
 
 
-
+	if (isCopy == false)
+	{
+		task->source = (void *)buffer;
+	}
 
 	if (length < unitSize)
 	{
@@ -856,7 +971,7 @@ void IOCPManager::sendData(string clientKey, const char *buffer, long long lengt
 	}
 
 
-
+	return 1;
 }
 
 

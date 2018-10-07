@@ -93,3 +93,9 @@ void IOCPThreadManager::waitAll()
 		return;
 	}
 }
+
+
+long IOCPThreadManager::send(string clientKey, const char *buffer, long long length, bool isCopy /* = true */, int unitSize /* = MAX_BUFFER_LENGTH */)
+{
+	return _manager.sendData(clientKey, buffer, length, isCopy, unitSize);
+}

@@ -28,6 +28,7 @@ public:
 
 	void waitAll();
 
+	long send(string clientKey, const char *buffer, long long length, bool isCopy = true, int unitSize = MAX_BUFFER_LENGTH);
 
 private:
 	IOCPThread **_threads;

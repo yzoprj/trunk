@@ -38,6 +38,7 @@ SSocketContextPtr SocketContextManager::createNewContext()
 void SocketContextManager::addNewClient(const string clientName, SSocketContextPtr context)
 {
 	MutexGuard guard(_cs);
+	context->index = _clientMap.size() + 1;
 	_clientMap.insert(make_pair(clientName, WSocketContextPtr(context)));
 	_connectionMap.insert(make_pair((long)context.get(), context));
 }

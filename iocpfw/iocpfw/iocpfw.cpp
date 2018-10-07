@@ -43,22 +43,22 @@ class TestTimer : public CWaitableTimer
 
 int main(int argc, char* argv[])
 {
-	IOCPManager manager;
-	IOCPManager::initializeSocketLibrary();
-	
+	//IOCPManager manager;
+	//IOCPManager::initializeSocketLibrary();
+	//
 
-	manager.initializeIOCP();
-	manager.initWSAFunction();
-	manager.initializeListenSocket();
-	manager.postConnection("192.168.1.52", 10008);
-	manager.run();
+	//manager.initializeIOCP();
+	//manager.initWSAFunction();
+	//manager.initializeListenSocket();
+	////manager.postConnection("192.168.1.52", 10008);
+	//manager.run();
 	
 	//manager.deinitializeSocketLibrary();
 
-	//IOCPThreadManager manager;
-	//manager.init();
-	//manager.start();
-	//manager.waitAll();
+	IOCPThreadManager manager;
+	manager.init();
+	manager.start();
+	manager.waitAll();
 
 
 

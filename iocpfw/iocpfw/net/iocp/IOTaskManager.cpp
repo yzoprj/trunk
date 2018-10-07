@@ -6,6 +6,7 @@ IOTask::IOTask()
 	totalBytes = 0;
 	opBytes = 0;
 	finishedTimes = 0;
+	source = NULL;
 }
 
 IOTask::~IOTask()
@@ -39,6 +40,12 @@ void IOTask::clear()
 	}
 
 	ioList.clear();
+
+	if (source != NULL)
+	{
+		delete source;
+		source = NULL;
+	}
 }
 
 bool IOTask::isFinished()
@@ -99,15 +106,31 @@ IOTask *IOTaskManager::createNewTask()
 	return task;
 }
 
-void IOTaskManager::removeTask(long key)
+void IOTaskManager::removeTask(long key, bool isForced)
 {
 	MutexGuard gurad(_cs);
 	map<long, IOTask*>::iterator iter = _taskMap.find(key);
+
+
+
 	if (iter == _taskMap.end())
 	{
 		return;
 	}else
 	{
+
+		if (isForced == false)
+		{
+			if (iter->second->isAllFinishedToClear() == false)
+			{
+				return;
+			}
+
+			char buffer[128] = {0};
+			sprintf(buffer, "Task[0x%08x] is Finished ", key);
+			WRITELOG(buffer);
+		}
+
 		delete iter->second;
 		_taskMap.erase(key);
 	}

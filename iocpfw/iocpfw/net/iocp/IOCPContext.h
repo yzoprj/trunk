@@ -24,7 +24,7 @@
 
 #define LISTEN_IP "0.0.0.0"
 
-#define  MAX_POST_ACCEPT 10000
+#define  MAX_POST_ACCEPT 20000
 
 
 using std::list;

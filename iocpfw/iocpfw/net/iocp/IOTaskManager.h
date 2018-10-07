@@ -13,6 +13,9 @@ struct IOTask
 	list<IOContext *> ioList;
 	long owner;
 	long long finishedTimes;
+
+	void *source;
+
 	IOTask();
 
 	~IOTask();
@@ -42,7 +45,7 @@ public:
 
 	IOTask *createNewTask();
 
-	void removeTask(long key);
+	void removeTask(long key, bool isForced = true);
 
 	void clearAll();
 

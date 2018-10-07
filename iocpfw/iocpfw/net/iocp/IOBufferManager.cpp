@@ -27,7 +27,7 @@ IOBuffer * IOBufferManager::addNewIoBuffer(IOBuffer *ioBuffer)
 	return ioBuffer;
 }
 
-void IOBufferManager::removeIoBuffer(int key)
+void IOBufferManager::removeIoBuffer(long key)
 {
 	MutexGuard guard(_cs);
 	IoBufferMapIterator iter = _ioBufferMap.find(key);

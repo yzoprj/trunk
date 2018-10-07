@@ -1,11 +1,11 @@
 #include "OperationHandler.h"
 #include "SocketContextManager.h"
 #include "IOBufferManager.h"
-
+#include "IOTaskManager.h"
 void DefaultOperationHandler::handleRecv(SSocketContextPtr &sockContext, IOBuffer *ioBuffer)
 {
 	char buffer[8096] = {0};
-	sprintf(buffer, "Client[%s]send bytes[%u][%s]", SocketContextManager::getClientName(sockContext).c_str(), ioBuffer->ioContext.overLapped.InternalHigh
+	sprintf(buffer, "Client[%d][%s]send bytes[%u][%s]", sockContext->index, SocketContextManager::getClientName(sockContext).c_str(), ioBuffer->ioContext.overLapped.InternalHigh
 		,ioBuffer->cache.data());
 
 	WRITELOG(buffer);
@@ -15,7 +15,9 @@ void DefaultOperationHandler::handleRecv(SSocketContextPtr &sockContext, IOBuffe
 void DefaultOperationHandler::handleSend(SSocketContextPtr &sockContext, IOContext *ioContext)
 {
 	char buffer[1024] = {0};
-	sprintf(buffer, "Index[%d]send bytes[%u]", ioContext->index, ioContext->overLapped.InternalHigh);
+	IOTask *task = (IOTask *)ioContext->owner;
+	sprintf(buffer, "Index[%d]send bytes[%u]==accumulate[%d] finishTimes[%d]", ioContext->index, ioContext->overLapped.InternalHigh
+										, task->opBytes + ioContext->overLapped.InternalHigh, task->finishedTimes + 1);
 
 	WRITELOG(buffer);
 }
@@ -23,7 +25,7 @@ void DefaultOperationHandler::handleSend(SSocketContextPtr &sockContext, IOConte
 void DefaultOperationHandler::handleAccept(SSocketContextPtr &sockContext)
 {
 	char buffer[1024] = {0};
-	sprintf(buffer,"new connect:[%s]", SocketContextManager::getClientName(sockContext).c_str());
+	sprintf(buffer,"new connect[%d]:[%s]", sockContext->index, SocketContextManager::getClientName(sockContext).c_str());
 
 	WRITELOG(buffer);
 }

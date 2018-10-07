@@ -13,6 +13,14 @@ class IOCPManager
 {
 public:
 
+	enum QueueErrorCode
+	{
+		ERR_CONTINUE,
+		ERR_EXIT,
+		ERR_NEXT,
+		
+	};
+
 	friend class IOCPThreadManager;
 
 	IOCPManager(OperationHandler *opHandler = NULL);
@@ -48,7 +56,7 @@ public:
 	
 	WSocketContextPtr getSocketContext(const string clientKey);
 	 
-	void sendData(string clientKey, const char *buffer, long long length, bool isCopy = true, int unitSize = MAX_BUFFER_LENGTH);
+	long sendData(string clientKey, const char *buffer, long long length, bool isCopy = true, int unitSize = MAX_BUFFER_LENGTH);
 
 protected:
 
@@ -82,9 +90,13 @@ protected:
 
 	void handleError(SocketContext *context);
 
+	QueueErrorCode handleError(SocketContext *sockContext, OVERLAPPED *ol, unsigned long result, unsigned long dwBytes);
+
 	void handleConnection(SSocketContextPtr &context, IOContext *ioContext);
 
 	void getHostIP();
+
+	bool isSocketAlive(SSocketContextPtr &ptr);
 private:
 
 	LPFN_ACCEPTEX _lpfnAcceptEx;

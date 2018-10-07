@@ -18,7 +18,7 @@ public:
 	IOBuffer * addNewIoBuffer(int key);
 
 	IOBuffer * addNewIoBuffer(IOBuffer *ioBuffer);
-	void removeIoBuffer(int key);
+	void removeIoBuffer(long key);
 
 	static IOBuffer *getNewBuffer();
 
