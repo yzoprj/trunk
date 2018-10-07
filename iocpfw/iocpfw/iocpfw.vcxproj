@@ -115,6 +115,7 @@
     <ClCompile Include="thread\Thread.cpp" />
     <ClCompile Include="thread\ThreadPool.cpp" />
     <ClCompile Include="thread\WaitableTimer.cpp" />
+    <ClCompile Include="net\iocp\TimeWheelTimer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\BitArray.h" />
@@ -126,6 +127,7 @@
     <ClInclude Include="common\RawBuffer.h" />
     <ClInclude Include="common\StringBuffer.h" />
     <ClInclude Include="common\TimeWheel.h" />
+    <ClInclude Include="common\TimeWheel.hpp" />
     <ClInclude Include="thread\CThreadTimer.h" />
     <ClInclude Include="net\Acceptor.h" />
     <ClInclude Include="net\AnonymousPipe.h" />
@@ -157,6 +159,7 @@
     <ClInclude Include="thread\Thread.h" />
     <ClInclude Include="thread\ThreadPool.h" />
     <ClInclude Include="thread\WaitableTimer.h" />
+    <ClInclude Include="net\iocp\TimeWheelTimer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

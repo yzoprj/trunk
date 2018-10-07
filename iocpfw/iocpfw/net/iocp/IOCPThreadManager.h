@@ -20,7 +20,7 @@ public:
 	IOCPThreadManager(void);
 	~IOCPThreadManager(void);
 	
-	bool init();
+	bool init(int threadCount = 0);
 	
 	void start();
 	

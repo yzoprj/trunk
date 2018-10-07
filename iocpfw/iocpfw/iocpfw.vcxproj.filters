@@ -123,6 +123,9 @@
     <ClCompile Include="thread\WaitableTimer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="net\iocp\TimeWheelTimer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\BitArray.h">
@@ -243,6 +246,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="thread\WaitableTimer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="common\TimeWheel.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="net\iocp\TimeWheelTimer.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -10,7 +10,7 @@ TimeWheel::TimeWheel(string wheelName, int slotSize, int unitTime)
 	_highLevelWheel = NULL;
 	_lowLevelWheel = NULL;
 	_currentSlot = -1;
-	_taskQueue.resize(_slotSize, vector<TimeWheelTaskBase>());
+	_taskQueue.resize(_slotSize, vector<TimeWheelTaskBase *>());
 }
 
 
@@ -21,7 +21,7 @@ TimeWheel::~TimeWheel()
 
 
 
-bool TimeWheel::insertTask(TimeWheelTaskBase &task, unsigned int executeTime)
+bool TimeWheel::insertTask(TimeWheelTaskBase *task, int executeTime)
 {
 	unsigned int resideTime = getResideTime();
 	unsigned int totalTime = getTotalTimeInWheel();
@@ -55,7 +55,7 @@ bool TimeWheel::insertTask(TimeWheelTaskBase &task, unsigned int executeTime)
 	if (_lowLevelWheel != NULL)
 	{
 		// minus the reside time in the wheel
-		int newExecuteTime = executeTime - (totalTime - resideTime);
+		int  newExecuteTime = executeTime - (totalTime - resideTime);
 		slot = newExecuteTime / _unitTime - 1;
 		delta = newExecuteTime % _unitTime;
 
@@ -81,6 +81,7 @@ bool TimeWheel::insertTask(TimeWheelTaskBase &task, unsigned int executeTime)
 	}
 
 	slot = (slot + _currentSlot) % _slotSize;
+	task->setTime(time(NULL) + executeTime);
 	_taskQueue[slot].push_back(task);
 	return true;
 }
@@ -105,20 +106,20 @@ void TimeWheel::updateWheel()
 		time_t currentTime = time(NULL);
 		for (size_t i = 0; i < _taskQueue[_currentSlot].size(); i++)
 		{
-			unsigned int taskExecuteTime = _taskQueue[_currentSlot][i].getTime();
-			unsigned int delta = taskExecuteTime - (unsigned int)currentTime;
+			time_t  taskExecuteTime = _taskQueue[_currentSlot][i]->getTime();
+			time_t delta = taskExecuteTime - currentTime;
 			if (delta < _unitTime)
 			{
-				_lowLevelWheel->insertTask(_taskQueue[_currentSlot][i], (int)delta);
+				_lowLevelWheel->insertTask(_taskQueue[_currentSlot][i], delta);
 			}
 		}
-
-		vector<TimeWheelTaskBase>::iterator iter = _taskQueue[_currentSlot].begin();
+		
+		vector<TimeWheelTaskBase *>::iterator iter = _taskQueue[_currentSlot].begin();
 
 		while (iter != _taskQueue[_currentSlot].end())
 		{
-			unsigned int taskExecuteTime = iter->getTime();
-			unsigned int delta = taskExecuteTime - (unsigned int)currentTime;
+			time_t  taskExecuteTime = (*iter)->getTime();
+			time_t  delta = taskExecuteTime - currentTime;
 
 			if (delta < _unitTime)
 			{
@@ -161,16 +162,21 @@ void TimeWheel::execute()
 		return;
 	}
 
-	vector<TimeWheelTaskBase>::iterator iter = _taskQueue[_currentSlot].begin();
+	vector<TimeWheelTaskBase *>::iterator iter = _taskQueue[_currentSlot].begin();
+	
 	while (iter != _taskQueue[_currentSlot].end())
 	{
-		unsigned int taskExecuteTime = iter->getTime();
-		unsigned int delta = taskExecuteTime - (unsigned int)currentTime;
 
-		if (delta < _unitTime)
+		
+		time_t  taskExecuteTime = (*iter)->getTime();
+		time_t delta = taskExecuteTime - currentTime;
+		printf("delta:[%d]\n", delta);
+		if (delta <= _unitTime)
 		{
-			iter->Execute();
+			(*iter)->execute();
+			delete (*iter);
 			_taskQueue[_currentSlot].erase(iter);
+			
 			iter = _taskQueue[_currentSlot].begin();
 			continue;
 		}
@@ -194,6 +200,14 @@ void TimeWheel::detachTimeWheel()
 	{
 		delete _highLevelWheel;
 		_highLevelWheel = NULL;
+	}
+
+	for (int i = 0; i < _taskQueue.size(); i++)
+	{
+		for(int j = 0; j < _taskQueue[i].size(); j++)
+		{
+			delete _taskQueue[i][j];
+		}
 	}
 
 }
@@ -234,7 +248,7 @@ public:
 		_timeWheel = new TimeWheel();
 	}
 
-	void addTask(TimeWheelTaskBase &task, unsigned int executeTime)
+	void addTask(TimeWheelTaskBase *task, unsigned int executeTime)
 	{
 		_timeWheel->insertTask(task, executeTime);
 	}

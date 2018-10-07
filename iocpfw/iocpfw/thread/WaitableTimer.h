@@ -11,7 +11,7 @@ public:
 					const char *threadName = "TimerThread");
 	~CWaitableTimer(void);
 
-	void activate(unsigned long periodTime = 1000, long dueTime = 1);
+	void activate(unsigned long periodTime = 1000, long dueTime = 1000);
 
 
 	void reactivate(unsigned long periodTime = 1000, long dueTime = 1);

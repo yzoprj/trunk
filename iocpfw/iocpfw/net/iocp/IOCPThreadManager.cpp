@@ -22,13 +22,22 @@ IOCPThreadManager::~IOCPThreadManager(void)
 }
 
 
-bool IOCPThreadManager::init()
+bool IOCPThreadManager::init(int threadCount /* = 0 */)
 {
 	SYSTEM_INFO sysInfo;
 
 	GetSystemInfo(&sysInfo);
 
-	_threadCount = sysInfo.dwNumberOfProcessors * 2;
+	if (threadCount <= 0)
+	{
+		_threadCount = sysInfo.dwNumberOfProcessors * 2;
+	}else
+	{
+		_threadCount = threadCount;
+	}
+	
+
+
 
 	_threads = new IOCPThread* [_threadCount];
 	
@@ -48,8 +57,9 @@ bool IOCPThreadManager::init()
 	_manager.initializeSocketLibrary();
 	_manager.initializeIOCP(_threadCount);
 	_manager.initWSAFunction();
+	_manager.startTimer();
 	_manager.initializeListenSocket();
-
+	
 	return true;
 }
 
@@ -81,6 +91,8 @@ void IOCPThreadManager::stop()
 	}
 
 	delete _handles;
+
+	_manager.stopTimer();
 	_manager.closeAll();
 	_manager.deinitialize();
 	_manager.deinitializeSocketLibrary();

@@ -131,6 +131,7 @@ SocketContext::SocketContext()
 	recvBuff = NULL;
 	ioContext = new IOContext;
 	ioContext->owner = this;
+	ZeroMemory(contextName, 32);
 }
 
 void SocketContext::clear()
@@ -159,7 +160,10 @@ SocketContext::~SocketContext()
 	ioContext = NULL;
 }
 
-
+void SocketContext::setContextName(const char *name)
+{
+	strcpy(contextName, name);
+}
 
 void writeLog(const char *str, const char *filesource /* = NULL */, const char *functionName /* = NULL */)
 {
@@ -183,9 +187,19 @@ void writeLog(const char *str, const char *filesource /* = NULL */, const char *
 	}
 
 	SYSTEMTIME st;
-	GetSystemTime(&st);
+	GetLocalTime(&st);
 
 	printf("Thread[%04X]=[%02d:%02d:%02d %03d][%-40s]:%s\n", GetCurrentThreadId(), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
 								function, str);
 
+}
+
+
+string getCurrentTime()
+{
+	char buffer[128] = {0};
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+	sprintf(buffer, "%04d/%02d/%02d %02d:%02d:%02d %03d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	return buffer;
 }

@@ -6,6 +6,8 @@
 #include "IOBufferManager.h"
 
 
+class TimeWheelTimer;
+
 class OperationHandler;
 
 
@@ -49,6 +51,10 @@ public:
 	bool initializeIOCP(int threadCount = 4);
 
 	bool initializeListenSocket();
+
+	void startTimer();
+
+	void stopTimer();
 
 	void deinitialize();
 
@@ -119,4 +125,5 @@ private:
 	SSocketContextPtr _listenContext;
 	IOBufferManager *_bufferManager;
 	IOTaskManager *_sendTaskManager;
+	TimeWheelTimer *_timeWheelTimer;
 };

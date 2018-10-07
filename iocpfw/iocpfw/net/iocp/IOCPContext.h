@@ -102,6 +102,7 @@ struct SocketContext
 	SOCKADDR_IN sockAddr;
 	SOCKET sockId;
 	DWORD opSet;
+	char contextName[32];
 	vector<char > *recvBuff;
 	IOContext *ioContext;
 	SocketContext();
@@ -112,6 +113,7 @@ struct SocketContext
 
 	void close();
 
+	void setContextName(const char *name);
 
 };
 
@@ -120,3 +122,5 @@ void writeLog(const char *str, const char *filesource = NULL, const char *functi
 
 #define  WRITELOG(str) \
 	writeLog(str, __FILE__, __FUNCTION__);
+
+string getCurrentTime();

@@ -33,7 +33,7 @@ void CWaitableTimer::activate(unsigned long periodTime,  long dueTime)
 {
 
 	_isTimerRunning = true;
-	_dueTime = dueTime * -1000L;
+	_dueTime = dueTime * -10000L;
 	_periodTime = periodTime;
 	start();
 }
@@ -47,11 +47,18 @@ void CWaitableTimer::quit()
 {
 	_isTimerRunning = false;
 
-	CancelWaitableTimer(_timerHandle);
+	if (_timerHandle != INVALID_HANDLE_VALUE)
+	{
+		CancelWaitableTimer(_timerHandle);
 
-	stop();
+		stop();
 
-	CloseHandle(_timerHandle);
+		CloseHandle(_timerHandle);
+		_timerHandle = INVALID_HANDLE_VALUE;
+	}
+
+
+	
 }
 
 void __stdcall CWaitableTimer::timerRoutine(void *arg, unsigned long dwTimerLowValue, unsigned long dwTimerHighValue)

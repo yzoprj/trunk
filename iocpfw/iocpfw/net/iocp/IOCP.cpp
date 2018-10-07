@@ -2,7 +2,7 @@
 #include <WinSock.h>
 #include <Windows.h>
 #include "OperationHandler.h"
-
+#include "TimeWheelTimer.h"
 std::string getWindowsErrorMessage(DWORD errCode)
 {
 	char buffer[1024] = {0};
@@ -32,6 +32,7 @@ IOCPManager::IOCPManager(OperationHandler *opHandler /* = NULL */)
 	_acceptContextManger = new IOBufferManager;
 	_bufferManager = new IOBufferManager;
 	_sendTaskManager = new IOTaskManager;
+	_timeWheelTimer = new TimeWheelTimer;
 
 	if (opHandler == NULL)
 	{
@@ -433,6 +434,8 @@ bool IOCPManager::handleRecv(SSocketContextPtr &context, IOContext *ioContext)
 
 	ioContext->clearBuffer();
 
+	_timeWheelTimer->addContext(context);
+
 	return postRecv(ioBuffer);
 }
 
@@ -467,7 +470,7 @@ bool IOCPManager::handleSend(SSocketContextPtr &context, IOContext *ioContext)
 	//		
 	//	}
 	//}
-
+	_timeWheelTimer->addContext(context);
 	return true;
 }
 
@@ -507,6 +510,17 @@ void IOCPManager::closeAll()
 	_sendTaskManager->clearAll();
 }
 
+
+void IOCPManager::startTimer()
+{
+	_timeWheelTimer->activate();
+}
+
+void IOCPManager::stopTimer()
+{
+	_timeWheelTimer->quit();
+}
+
 void IOCPManager::deinitialize()
 {
 	closeAll();
@@ -515,6 +529,7 @@ void IOCPManager::deinitialize()
 	delete _bufferManager;
 	delete _sendTaskManager;
 	delete _opHandler;
+	delete _timeWheelTimer;
 
 
 
@@ -660,12 +675,12 @@ bool IOCPManager::handleFirstRecvWithoutData(SSocketContextPtr &context, IOConte
 	IOBuffer *ioBuffer = _bufferManager->addNewIoBuffer((int)newContext.get());
 
 	ioBuffer->ioContext.sockId = newContext->sockId;
-
-	_clientManager->addNewClient(SocketContextManager::getClientName(newContext), newContext);
+	newContext->setContextName(SocketContextManager::getClientName(newContext).c_str());
+	_clientManager->addNewClient(newContext->contextName, newContext);
 
 	_opHandler->handleAccept(newContext);
 
-	SendLargeData(newContext);
+	//SendLargeData(newContext);
 
 	if (this->postRecv(ioBuffer) == false)
 	{
@@ -673,7 +688,7 @@ bool IOCPManager::handleFirstRecvWithoutData(SSocketContextPtr &context, IOConte
 	}
 
 	//context->close();
-
+	_timeWheelTimer->addContext(newContext);
 	return true;
 }
 
@@ -912,7 +927,7 @@ long IOCPManager::sendData(string clientKey, const char *buffer, long long lengt
 		return -2;
 	}
 
-
+	_timeWheelTimer->addContext(ptr);
 
 
 	IOTask *task = _sendTaskManager->createNewTask();
