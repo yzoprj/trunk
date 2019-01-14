@@ -13,6 +13,8 @@ public:
 	
 	SocketEx(const SocketEx &sock);
 	
+	SocketEx(SocketEx &&sock);
+
 	SocketEx &operator=(const SocketEx &sock);
 	
 	virtual ~SocketEx();

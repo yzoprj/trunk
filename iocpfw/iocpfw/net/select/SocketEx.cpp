@@ -39,6 +39,19 @@ SocketEx::SocketEx(const SocketEx &sock)
 
 }
 
+SocketEx::SocketEx(SocketEx &&sock)
+{
+	_connected = sock._connected;
+	_handle = sock._handle;
+	_localAddress = sock._localAddress;
+	_remoteAddress = sock._remoteAddress;
+
+	sock._localAddress = NULL;
+	sock._remoteAddress = NULL;
+	sock._handle = INVALID_SOCKET;
+	sock._connected = 0;
+}
+
 SocketEx::~SocketEx()
 {
 	//if (_localAddress != NULL)
