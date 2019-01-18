@@ -29,6 +29,8 @@ public:
 	SelectorKey &operator= (const SelectorKey &key);
 
 	~SelectorKey();
+
+	void setConnecting(bool connecting);
 	
 	void setSocket(const SSocketExPtr &sock);
 	
@@ -40,6 +42,9 @@ public:
 
 	SelectOperationType getOperation() const ;
 
+
+	bool isConnecting() const;
+
 	bool isAcceptable() const;
 
 	bool isReadable() const;
@@ -50,6 +55,7 @@ public:
 private:
 	SelectOperationType _opType;
 	SSocketExPtr _sock;
+	bool _connecting;
 };
 
 #endif // SELECTORKEY_H

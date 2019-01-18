@@ -3,7 +3,7 @@
 using std::make_shared;
 SelectorKey::SelectorKey()
 {
-
+	_connecting = false;
 }
 
 SelectorKey::SelectorKey(const SSocketExPtr &sock, 
@@ -11,17 +11,24 @@ SelectorKey::SelectorKey(const SSocketExPtr &sock,
 {
 	setSocket(sock);
 	setOperation(opType);
+	_connecting = false;
 }
 
 SelectorKey::SelectorKey(const SelectorKey &key)
 {
 	setSocket(key.getSocket());
 	setOperation(key.getOperation());
+	_connecting = key._connecting;
 }
 
 SelectorKey::~SelectorKey()
 {
 
+}
+
+void SelectorKey::setConnecting(bool connecting)
+{
+	_connecting = connecting;
 }
 
 void SelectorKey::setSocket(const SSocketExPtr &sock)
@@ -47,6 +54,11 @@ SSocketExPtr SelectorKey::getSocket() const
 SelectorKey::SelectOperationType SelectorKey::getOperation() const
 {
 	return _opType;
+}
+
+bool SelectorKey::isConnecting() const
+{
+	return _connecting == true;
 }
 
 bool SelectorKey::isAcceptable() const

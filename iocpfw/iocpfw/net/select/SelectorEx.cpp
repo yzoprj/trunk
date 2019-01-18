@@ -1,12 +1,13 @@
 #include "SelectorEx.h"
 //#include <WinSock2.h>
 //#include <Windows.h>
-#include "../../common/Common.h"
+
+
+
 #include "SelectorHandler.h"
 #include "SocketEx.h"
 #include "NetHelper.h"
 #include "InetAddress.h"
-
 
 
 
@@ -20,6 +21,10 @@ class DefaultSelectorHandler : public SelectorHandler
 
 public:
 	
+	virtual bool handleConnected(SelectorKey &key) 
+	{
+		return true;
+	}
 
 	virtual bool handleAccept(SelectorKey &key, SelectorKey &newKey)
 	{
@@ -93,32 +98,69 @@ void SelectorEx::run()
 {
 	int flag = 0;
 	bool result = false;
-	timeval tv = {3, 0};
+	timeval tv = {0, 3000};
 	FD_SET readFields;
+	FD_SET writeFields;
+	FD_SET exceptionFields;
 	FD_ZERO(&readFields);
-
+	FD_ZERO(&writeFields);
+	FD_ZERO(&exceptionFields);
 	SelectorKeyIter iter;
 	vector<SelectorKey> sessions;
 	InterlockedIncrement(&_shutdown);
 
+	// 插入一个空的socket 防止无socket导致select一直返回失败
+	SelectorKey placeHolderKey(SSocketExPtr(new SocketEx(true)), SelectorKey::SK_Read);
+	registerSession(placeHolderKey);
 	while (_shutdown > 0)
 	{
 		{
+
+			FD_ZERO(&readFields);
+			FD_ZERO(&writeFields);
+			FD_ZERO(&exceptionFields);
+
+	
+
 			MUTEX_GUARD();
+			
+			
+
+			
 			iter = _sessions.begin();
+			sessions.clear();
 			while (iter != _sessions.end())
 			{
 				FD_SET(iter->second.getSocket()->getSocketHandle(), &readFields);
+				FD_SET(iter->second.getSocket()->getSocketHandle(), &exceptionFields);
 				sessions.push_back(iter->second);
+				
+				iter++;
+			}
+
+			iter = _connectingSessions.begin();
+			
+			while (iter != _connectingSessions.end())
+			{
+				FD_SET(iter->second.getSocket()->getSocketHandle(), &writeFields);
+				//sessions.push_back(iter->second);
+				
 				iter++;
 			}
 		}
 
-		flag = select(0, &readFields, NULL, NULL, &tv);
+		flag = select(0, &readFields, &writeFields, &exceptionFields, &tv);
+
+
+		
 
 		if (flag == 0)
 		{
 			continue;
+		}else if (flag < 0)
+		{
+			unsigned long errorCode = WSAGetLastError();
+			break;
 		}
 
 		if (_shutdown == 0)
@@ -128,8 +170,24 @@ void SelectorEx::run()
 
 		for (int i = 0; i < sessions.size(); i++)
 		{
-			if (FD_ISSET(sessions[i].getSocket()->getSocketHandle(), &readFields))
+			// 当连接失败或者其他情况时 移除该socket
+			if (FD_ISSET(sessions[i].getSocket()->getSocketHandle(), &exceptionFields))
 			{
+				_handler->handleError(sessions[i]);
+				unregisterSession(sessions[i].getSocket()->getRemoteAddress());
+				continue;
+			}else if (FD_ISSET(sessions[i].getSocket()->getSocketHandle(), &readFields))
+			{
+				// 当注册是读写的时候 而且该socket可读可写 意味着连接成功
+				
+				if ((sessions[i].isReadable() || sessions[i].isWritable())
+					&& FD_ISSET(sessions[i].getSocket()->getSocketHandle(), &writeFields))
+				{
+					printDebugInfo(strerror(errno));
+					removeConnectingSession(sessions[i]);
+					continue;
+				}
+
 				if (sessions[i].isAcceptable())
 				{
 					SelectorKey key;
@@ -176,21 +234,29 @@ void SelectorEx::stop()
 	InterlockedDecrement(&_shutdown);
 }
 
-void SelectorEx::registerSession(const SocketEx &ss, SelectorKey::SelectOperationType opType)
+void SelectorEx::registerSession(const SocketEx &ss, SelectorKey::SelectOperationType opType, bool isConnecting /* = false */)
 {
 	
 	SelectorKey key;
 	key.setSocket(shared_ptr<SocketEx>(new SocketEx(ss)));
 	key.setOperation(opType);
-	
+	key.setConnecting(isConnecting);
+	registerSession(key);
 }
 
 void SelectorEx::registerSession(const SelectorKey &key)
 {
 	MUTEX_GUARD();
+
+
 	_sessions.insert(make_pair(NetHelper::generateNetKey(key.getSocket()->getRemoteAddress()), key));
 	_sessionBuffers.insert(make_pair(NetHelper::generateNetKey(key.getSocket()->getRemoteAddress()), 
 							shared_ptr<vector<char> >(new vector<char>())));
+
+	if (key.isConnecting())
+	{
+		_connectingSessions.insert(make_pair(NetHelper::generateNetKey(key.getSocket()->getRemoteAddress()), key));
+	}
 }
 
 void SelectorEx::unregisterSession(const InetAddress &inet)
@@ -205,6 +271,7 @@ void SelectorEx::unregisterSession(const InetAddress &inet)
 
 	//iter->second.getSocket()->close();
 
+	_connectingSessions.erase(NetHelper::generateNetKey(inet));
 	_sessions.erase(iter);
 
 	_sessionBuffers.erase(NetHelper::generateNetKey(inet));
@@ -227,6 +294,10 @@ void SelectorEx::clearSessions()
 		iter++;
 	}
 
+	
+	
+
+	_connectingSessions.clear();
 	_sessions.clear();
 	_sessionBuffers.clear();
 }
@@ -247,6 +318,13 @@ void SelectorEx::clearDisconnectionSession()
 		//	_sessionBuffers.erase(key);
 		//}
 		_sessions.erase(key);
+		_connectingSessions.erase(key);
 		_sessionBuffers.erase(key);
 	}
+}
+
+void SelectorEx::removeConnectingSession(const SelectorKey & sk)
+{
+	MUTEX_GUARD();
+	_connectingSessions.erase(NetHelper::generateNetKey(sk.getSocket()->getRemoteAddress()));
 }

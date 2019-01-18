@@ -23,7 +23,7 @@ public:
 
 	void stop();
 
-	void registerSession(const SocketEx &ss, SelectorKey::SelectOperationType  opType);
+	void registerSession(const SocketEx &ss, SelectorKey::SelectOperationType  opType, bool isConnecting = false);
 	void registerSession(const SelectorKey &key);
 	void unregisterSession(const InetAddress &inet);
 			
@@ -39,13 +39,14 @@ protected:
 
 	void clearDisconnectionSession();
 
+	void removeConnectingSession(const SelectorKey & sk);
 protected:
 	map<string, SelectorKey > _sessions;
-
+	map<string, SelectorKey > _connectingSessions;
 	map<string, shared_ptr<vector<char> > > _sessionBuffers;
 	
 	vector<SelectorKey> _disconnectSessions;
-
+	
 	SelectorHandler *_handler;
 
 	long _shutdown;

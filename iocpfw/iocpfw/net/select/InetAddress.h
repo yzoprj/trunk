@@ -8,12 +8,19 @@ public:
 
 	InetAddress();
 	InetAddress(int ip, int port);
-	InetAddress(char *ip, int port);
+	InetAddress(const char *ip, int port);
 	~InetAddress();
 
+	void setIP(const char *ip);
+	void setIP(int ip);
+	void setPort(int port);
+
 	 char *getIPName() const ;
-	 unsigned short getIp() const ;
+	 unsigned int getIP() const ;
 	 unsigned short getPort() const ;
+
+	 unsigned int getNetIP() const;
+	 unsigned short getNetPort() const;
 private:
 	unsigned int _ip;
 	unsigned short _port;

@@ -12,9 +12,9 @@ public:
 	SocketEx(unsigned int handle);
 	
 	SocketEx(const SocketEx &sock);
-	
-	SocketEx(SocketEx &&sock);
 
+	SocketEx(SocketEx &&sock);
+	
 	SocketEx &operator=(const SocketEx &sock);
 	
 	virtual ~SocketEx();
@@ -27,9 +27,13 @@ public:
 
 	bool connect(const InetAddress &addr, bool blockd = true);
 
-	bool isValidSocket();
+	bool isValidSocket() const;
+
+	bool isLocalSocket() const;
 
 	void setTimeout(int sendTimeout = 3, int recvTimeout = 3);
+
+	void setLocal(bool isLocal);
 
 	InetAddress getRemoteAddress() const;
 
@@ -50,6 +54,8 @@ protected:
 	mutable InetAddress *_localAddress;
 
 	long _connected;
+
+	bool _local;
 };
 
 #endif // SOCKETEX_H

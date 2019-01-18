@@ -11,6 +11,7 @@ using std::map;
 using std::vector;
 using std::make_pair;
 using std::shared_ptr;
+using std::make_shared;
 using std::weak_ptr;
 
 

@@ -9,7 +9,7 @@ class NetHelper
 {
 public:
 	static string generateNetKey(const InetAddress &inet);
-
+	static string generateNetIP(unsigned long ip);
 private:
 	NetHelper();
 	~NetHelper();

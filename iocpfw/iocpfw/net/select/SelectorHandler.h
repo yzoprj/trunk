@@ -8,7 +8,7 @@ class SelectorHandler
 public:
 	SelectorHandler();
 	~SelectorHandler();
-
+	virtual bool handleConnected(SelectorKey &key) = 0;
 	virtual bool handleAccept(SelectorKey &key, SelectorKey &newKey) = 0;
 	virtual bool handleRead(SelectorKey &key, shared_ptr<vector<char> > &buffer) = 0;
 	virtual bool handleWrite(SelectorKey &key, const RawBuffer &buffer) = 0;
