@@ -25,7 +25,7 @@ public:
 
 	bool bind(const InetAddress &addr, bool blocked = true);
 
-	bool connect(const InetAddress &addr, bool blockd = true);
+	bool connect(const InetAddress &addr, bool blockd = false);
 
 	bool isValidSocket() const;
 

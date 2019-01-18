@@ -9,6 +9,8 @@ public:
 	InetAddress();
 	InetAddress(int ip, int port);
 	InetAddress(const char *ip, int port);
+	InetAddress(const InetAddress &inet);
+	InetAddress &operator=(const InetAddress & inet);
 	~InetAddress();
 
 	void setIP(const char *ip);

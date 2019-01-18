@@ -152,7 +152,7 @@ bool SocketEx::connect(const InetAddress &addr, bool blockd /*= true*/)
 	}
 
 
-	if (blockd)
+	if (blockd == false)
 	{
 		setNoBlock();
 	}
@@ -181,10 +181,13 @@ bool SocketEx::connect(const InetAddress &addr, bool blockd /*= true*/)
 		if (errorCode == 10035)
 		{
 			return true;
+		}else
+		{
+			return false;
 		}
 	}
 
-	return false;
+	return true;
 }
 
 void SocketEx::setValid(bool flag)
@@ -229,13 +232,13 @@ void SocketEx::setLocal(bool isLocal)
 InetAddress SocketEx::getRemoteAddress() const
 {
 	getSocketInformation(true);
-	return _remoteAddress == NULL ?  *_remoteAddress : InetAddress(0, 0);
+	return _remoteAddress != NULL ?  *_remoteAddress : InetAddress(0, 0);
 }
 
 InetAddress SocketEx::getLocalAddress() const
 {
 	getSocketInformation(false);
-	return _localAddress == NULL ? *_localAddress : InetAddress(0, 0);
+	return _localAddress !=  NULL ? *_localAddress : InetAddress(0, 0);
 }
 
 unsigned int SocketEx::getSocketHandle() const 

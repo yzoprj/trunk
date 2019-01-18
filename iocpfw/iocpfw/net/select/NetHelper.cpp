@@ -6,7 +6,7 @@
 string NetHelper::generateNetKey(const InetAddress &inet)
 {
 	char buffer[256] = {0};
-	sprintf(buffer, "%08X%02X", inet.getIP(), inet.getPort());
+	sprintf(buffer, "%08X%04X", inet.getIP(), inet.getPort());
 
 	return buffer;
 }

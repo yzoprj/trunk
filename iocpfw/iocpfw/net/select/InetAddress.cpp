@@ -24,10 +24,12 @@ InetAddress::InetAddress(const char *ip, int port)
 	{
 		strcpy(_ipName, ip);
 		_port = port;
-		_ip = inet_addr(ip);
+		_ip = ntohl(inet_addr(ip));
 	}else
 	{
 		memset(_ipName, 0, IP_NAME_LENGTH);
+		port = port;
+		ip = 0;
 	}
 
 }
@@ -36,6 +38,21 @@ InetAddress::InetAddress()
 	:_ip(0), _port(0)
 {
 	memset(_ipName, 0, IP_NAME_LENGTH);
+}
+
+InetAddress::InetAddress(const InetAddress &inet)
+{
+	_ip = inet._ip;
+	_port = inet._port;
+	memcpy(_ipName, inet._ipName, IP_NAME_LENGTH);
+}
+
+InetAddress & InetAddress::operator=(const InetAddress & inet)
+{
+	_ip = inet._ip;
+	_port = inet._port;
+	memcpy(_ipName, inet._ipName, IP_NAME_LENGTH);
+	return *this;
 }
 
 InetAddress::~InetAddress()
@@ -47,13 +64,13 @@ InetAddress::~InetAddress()
 void InetAddress::setIP(int ip)
 {
 	_ip = ip;
-	strcpy(_ipName, NetHelper::generateNetIP(ip).c_str());
+	strcpy(_ipName, NetHelper::generateNetIP(htonl(ip)).c_str());
 }
 
 void InetAddress::setIP(const char *ip)
 {
 	strcpy(_ipName, ip);
-	_ip = inet_addr(ip);
+	_ip = ntohl(inet_addr(ip));
 }
 
 void InetAddress::setPort(int port)
