@@ -22,6 +22,7 @@ public:
 	bool resume();
 	bool wait(unsigned long waitTime);
 	void setExitCode(unsigned long isExit) { exitCode = isExit;}
+	const char* getThreadName(void);
 	void setNameInternal(const char* name);  
 	void closeHandle();
 	void * getThreadHandle() {return hThread;}

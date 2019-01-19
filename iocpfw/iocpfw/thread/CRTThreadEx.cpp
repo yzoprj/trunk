@@ -155,6 +155,18 @@ void CRTThreadEx::setNameInternal(const char* name)
 	}  
 }
 
+
+const char* GetThreadName(void)
+{
+	char* pszName=NULL;
+	__asm{
+		mov eax, fs:[0x18]    //    Locate the caller's TIB
+		mov eax, [eax+0x14]    //    Read the pvArbitary field in the TIB
+		mov [pszName], eax    //    pszName = pTIB->pvArbitary
+	}
+	return pszName ? pszName : "Win32 Thread";
+}
+
 void CRTThreadEx::closeHandle()
 {
 	if (hThread != INVALID_HANDLE_VALUE)

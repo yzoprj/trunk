@@ -31,7 +31,7 @@ bool SocketChannelEx::read(vector<char> &buffer)
 	{
 		return false;
 	}
-
+	
 	if (nBytes == 0)
 	{
 		return true;
@@ -67,6 +67,8 @@ bool SocketChannelEx::read(vector<char> &buffer)
 
 
 	delete tmpBuf;
+
+	return true;
 }
 
 bool SocketChannelEx::write(const vector<char> &buffer, int &outBytes)
