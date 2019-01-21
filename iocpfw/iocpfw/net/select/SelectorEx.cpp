@@ -184,6 +184,7 @@ void SelectorEx::run()
 					&& FD_ISSET(sessions[i].getSocket()->getSocketHandle(), &writeFields))
 				{
 					printDebugInfo(strerror(errno));
+					sessions[i].setConnecting(false);
 					removeConnectingSession(sessions[i]);
 					continue;
 				}
@@ -270,7 +271,7 @@ void SelectorEx::unregisterSession(const InetAddress &inet)
 	}
 
 	//iter->second.getSocket()->close();
-
+	iter->second.getSocket()->close();
 	_connectingSessions.erase(NetHelper::generateNetKey(inet));
 	_sessions.erase(iter);
 

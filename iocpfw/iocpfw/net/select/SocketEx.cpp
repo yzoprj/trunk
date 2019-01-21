@@ -180,9 +180,11 @@ bool SocketEx::connect(const InetAddress &addr, bool blockd /*= true*/)
 		int erroCode = errno;
 		if (errorCode == 10035)
 		{
+			setValid(true);
 			return true;
 		}else
 		{
+			setValid(false);
 			return false;
 		}
 	}
@@ -194,10 +196,11 @@ void SocketEx::setValid(bool flag)
 {
 	if (flag == true)
 	{
-		InterlockedIncrement(&_connected);
+		InterlockedExchange(&_connected, 1);
+		//InterlockedIncrement(&_connected);
 	}else
 	{
-		InterlockedDecrement(&_connected);
+		InterlockedExchange(&_connected, 0);
 	}
 }
 
